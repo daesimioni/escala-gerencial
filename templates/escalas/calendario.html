@@ -1,0 +1,174 @@
+{% extends "base.html" %}
+{% block title %}Calendário {{ nome_mes }} {{ ano }}{% endblock %}
+{% block page_title %}Calendário — {{ nome_mes }} {{ ano }}{% endblock %}
+
+{% block content %}
+<!-- Month Navigation -->
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+  <div class="d-flex align-items-center gap-2">
+    <a href="{% url 'calendario_mes' ano=mes_anterior.1 mes=mes_anterior.0 %}" class="btn btn-outline-secondary btn-sm" title="Mês anterior"><i class="bi bi-chevron-left"></i></a>
+    <h3 class="mb-0 fw-bold">{{ nome_mes }} {{ ano }}</h3>
+    <a href="{% url 'calendario_mes' ano=mes_seguinte.1 mes=mes_seguinte.0 %}" class="btn btn-outline-secondary btn-sm" title="Próximo mês"><i class="bi bi-chevron-right"></i></a>
+  </div>
+  <div class="d-flex gap-2 align-items-center">
+    {% if mes_fechado %}
+      <span class="badge bg-danger" title="Este mês está fechado e não pode ser alterado automaticamente"><i class="bi bi-lock-fill"></i> Mês Fechado</span>
+      {% if user_is_staff %}
+        <form method="post" action="{% url 'reabrir_mes' ano=ano mes=mes %}" class="d-inline">
+          {% csrf_token %}<button class="btn btn-outline-warning btn-sm" title="Reabrir mês para regeneração"><i class="bi bi-unlock"></i></button>
+        </form>
+      {% endif %}
+    {% else %}
+      {% if user_is_staff %}
+        <form method="post" action="{% url 'fechar_mes' ano=ano mes=mes %}" class="d-inline">
+          {% csrf_token %}<button class="btn btn-outline-danger btn-sm" title="Fechar/bloquear este mês"><i class="bi bi-lock"></i> Fechar</button>
+        </form>
+      {% endif %}
+    {% endif %}
+    <a href="{% url 'calendario' %}" class="btn btn-outline-primary btn-sm">Hoje</a>
+    <a href="{% url 'calendario_anual' ano=ano %}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-calendar-year"></i> Anual</a>
+  </div>
+</div>
+
+<!-- ===== DESKTOP CALENDAR GRID ===== -->
+<div class="calendar-grid d-none d-lg-grid">
+  <div class="calendar-header-cell text-danger">Dom</div>
+  <div class="calendar-header-cell">Seg</div>
+  <div class="calendar-header-cell">Ter</div>
+  <div class="calendar-header-cell">Qua</div>
+  <div class="calendar-header-cell">Qui</div>
+  <div class="calendar-header-cell">Sex</div>
+  <div class="calendar-header-cell text-primary">Sáb</div>
+
+  {% for week in weeks %}
+    {% for day in week %}
+      <div class="calendar-day
+        {% if day.other_month %}other-month{% endif %}
+        {% if day.is_today %}today{% endif %}
+        {% if day.day_type == 'feriadao' %}feriadao-cell{% endif %}
+        {% if day.day_type == 'feriado' %}feriado-cell{% endif %}
+        {% if day.is_weekend and day.day_type != 'feriadao' and day.day_type != 'feriado' %}weekend{% endif %}">
+
+        <div class="calendar-day-num {% if day.dow == 6 %}text-danger{% elif day.dow == 5 %}text-primary{% endif %}">
+          {{ day.date.day }}
+        </div>
+
+        <!-- Indicators -->
+        {% if day.assignment and day.assignment.manual or day.has_conflict %}
+        <div class="calendar-day-indicators">
+          {% if day.assignment and day.assignment.manual %}
+            <span style="font-size:.55rem;color:var(--color-manual)" title="Editado manualmente">✎</span>
+          {% endif %}
+          {% if day.has_conflict %}
+            <span style="font-size:.55rem;color:var(--color-conflito)" title="Conflito!">⚠</span>
+          {% endif %}
+        </div>
+        {% endif %}
+
+        <!-- Assignments -->
+        {% if day.assignment %}
+        <div class="calendar-day-assignments">
+          {% if day.assignment.s1 %}
+            <span class="calendar-tag s1">S1 {{ day.assignment.s1.nome }}</span>
+          {% endif %}
+          {% if day.assignment.s2 %}
+            <span class="calendar-tag s2">S2 {{ day.assignment.s2.nome }}</span>
+          {% endif %}
+        </div>
+        {% endif %}
+
+        <!-- Blocks -->
+        {% for blk in day.blocks %}
+          {% if blk.tipo == 'FERIAS' %}
+            <span class="calendar-tag ferias">F {{ blk.usuario.nome }}</span>
+          {% else %}
+            <span class="calendar-tag bloqueio">N {{ blk.usuario.nome }}</span>
+          {% endif %}
+        {% endfor %}
+
+        <!-- Edit button -->
+        {% if not day.other_month %}
+        <div class="mt-1">
+          <a href="{% url 'editar_dia' ano=day.date.year mes=day.date.month dia=day.date.day %}"
+             class="btn btn-sm py-0 px-1" style="font-size:.55rem;color:var(--color-text-muted)" title="Editar">
+            <i class="bi bi-pencil"></i>
+          </a>
+        </div>
+        {% endif %}
+      </div>
+    {% endfor %}
+  {% endfor %}
+</div>
+
+<!-- ===== MOBILE CALENDAR LIST ===== -->
+<div class="calendar-list d-lg-none">
+  {% for week in weeks %}
+    {% for day in week %}
+      {% if not day.other_month %}
+        <div class="calendar-list-item
+          {% if day.day_type == 'feriadao' %}feriadao-cell{% endif %}
+          {% if day.day_type == 'feriado' %}feriado-cell{% endif %}
+          {% if day.is_weekend and day.day_type != 'feriadao' and day.day_type != 'feriado' %}weekend{% endif %}
+          {% if day.is_today %}today{% endif %}">
+
+          <!-- Day badge -->
+          <div class="day-badge
+            {% if day.day_type == 'feriadao' %}" style="background:var(--color-feriadao-light);color:var(--color-feriadao-text)"
+            {% elif day.day_type == 'feriado' %}" style="background:var(--color-feriado-light);color:var(--color-feriado-text)"
+            {% elif day.is_weekend %}" style="background:var(--color-weekend)"
+            {% else %}" style="background:var(--color-bg)"
+            {% endif %}>
+            {{ day.date.day }}
+            <small style="font-size:.5rem;font-weight:400">
+              {% if day.dow == 0 %}Dom{% elif day.dow == 1 %}Seg{% elif day.dow == 2 %}Ter
+              {% elif day.dow == 3 %}Qua{% elif day.dow == 4 %}Qui{% elif day.dow == 5 %}Sex{% else %}Sáb{% endif %}
+            </small>
+          </div>
+
+          <!-- Day info -->
+          <div class="day-info">
+            <div style="font-weight:600;font-size:.8rem">{{ day.date|date:"d/m/Y" }}</div>
+            {% if day.assignment %}
+              {% if day.assignment.s1 %}
+                <span class="badge badge-s1" style="font-size:.6rem">S1 {{ day.assignment.s1.nome }}</span>
+              {% endif %}
+              {% if day.assignment.s2 %}
+                <span class="badge badge-s2" style="font-size:.6rem">S2 {{ day.assignment.s2.nome }}</span>
+              {% endif %}
+              {% if day.assignment.manual %}
+                <span style="font-size:.6rem;color:var(--color-manual)">✎</span>
+              {% endif %}
+            {% endif %}
+            {% for blk in day.blocks %}
+              {% if blk.tipo == 'FERIAS' %}
+                <span class="badge badge-ferias" style="font-size:.6rem">F {{ blk.usuario.nome }}</span>
+              {% else %}
+                <span class="badge badge-bloqueio" style="font-size:.6rem">N {{ blk.usuario.nome }}</span>
+              {% endif %}
+            {% endfor %}
+          </div>
+
+          <a href="{% url 'editar_dia' ano=day.date.year mes=day.date.month dia=day.date.day %}"
+             class="btn btn-sm btn-outline-secondary" style="font-size:.7rem;flex-shrink:0">
+            <i class="bi bi-pencil"></i>
+          </a>
+        </div>
+      {% endif %}
+    {% endfor %}
+  {% endfor %}
+</div>
+
+<!-- Legend -->
+<div class="legend mt-3">
+  <div class="legend-item"><span class="legend-swatch" style="background:var(--color-s1)"></span> S1 Trabalha</div>
+  <div class="legend-item"><span class="legend-swatch" style="background:var(--color-s2)"></span> S2 Sobreaviso</div>
+  <div class="legend-item"><span class="legend-swatch" style="background:var(--color-ferias)"></span> Férias</div>
+  <div class="legend-item"><span class="legend-swatch" style="background:var(--color-bloqueio)"></span> Indisponível</div>
+  <div class="legend-item"><span class="legend-swatch" style="background:var(--color-feriado)"></span> Feriado</div>
+  <div class="legend-item"><span class="legend-swatch" style="background:var(--color-feriadao)"></span> Feriadão</div>
+  <div class="legend-item">✎ Manual</div>
+  <div class="legend-item">⚠ Conflito</div>
+</div>
+
+{% include "escalas/_resumo_tabela.html" with resumo=resumo media_plantoes=media_plantoes %}
+{% endblock %}

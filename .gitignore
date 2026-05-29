@@ -1,0 +1,36 @@
+# Django
+db.sqlite3
+*.pyc
+__pycache__/
+*.pyo
+*.sqlite3
+
+# Ambiente virtual
+venv/
+env/
+.venv/
+
+# Arquivos de mídia e estáticos coletados
+media/
+staticfiles/
+
+# Configurações locais
+*.local.py
+.env
+
+# Sistema
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# PDF/HTML gerados (opcional)
+# DOCUMENTACAO.pdf
+
+# VSCode / IDE
+.vscode/
+.idea/
+
+# Claude
+.claude/

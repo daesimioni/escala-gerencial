@@ -1,0 +1,83 @@
+{% load static %}
+<div class="card mt-4 shadow-sm">
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <span><i class="bi bi-table"></i> <strong>Resumo do Período</strong></span>
+    <div class="d-flex gap-2">
+      <button class="btn btn-sm btn-outline-secondary" onclick="sortTable(3, 'desc')" title="Ordenar por total de plantões">↓ Plantões</button>
+      <button class="btn btn-sm btn-outline-secondary" onclick="sortTable(7, 'desc')" title="Ordenar por S1">↓ S1</button>
+      <button class="btn btn-sm btn-outline-secondary" onclick="sortTable(8, 'desc')" title="Ordenar por S2">↓ S2</button>
+      <button class="btn btn-sm btn-outline-secondary" onclick="sortTable(4, 'desc')" title="Ordenar por sábados">↓ Sáb</button>
+      <button class="btn btn-sm btn-outline-secondary" onclick="sortTable(6, 'desc')" title="Ordenar por feriados">↓ Fer</button>
+      <button class="btn btn-sm btn-outline-secondary" onclick="sortTable(9, 'desc')" title="Ordenar por férias">↓ Férias</button>
+    </div>
+  </div>
+  <div class="table-responsive">
+    <table class="table table-sm table-hover mb-0" id="resumoTabela">
+      <thead class="table-light">
+        <tr>
+          <th>Usuário</th>
+          <th class="text-center">Grp</th>
+          <th class="text-center sort-col" data-col="3">Total Plantões</th>
+          <th class="text-center">Sábados</th>
+          <th class="text-center">Domingos</th>
+          <th class="text-center">Feriados</th>
+          <th class="text-center">Feriadões</th>
+          <th class="text-center">S1</th>
+          <th class="text-center">S2</th>
+          <th class="text-center">Férias (dias)</th>
+          <th class="text-center">Bloqueios (dias)</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in resumo %}
+          <tr class="{% if row.total_plantoes > media_plantoes|add:2 %}table-warning{% elif row.total_plantoes < media_plantoes|add:-2 %}table-info{% endif %}">
+            <td><strong>{{ row.usuario.nome }}</strong></td>
+            <td class="text-center">
+              <span class="badge {% if row.grupo == 'A' %}badge-s1{% else %}badge-s2{% endif %}">{{ row.grupo }}</span>
+            </td>
+            <td class="text-center fw-bold">{{ row.total_plantoes }}</td>
+            <td class="text-center">{{ row.sabados }}</td>
+            <td class="text-center">{{ row.domingos }}</td>
+            <td class="text-center">{{ row.feriados }}</td>
+            <td class="text-center">{{ row.feriadoes }}</td>
+            <td class="text-center"><span class="badge badge-s1">{{ row.s1 }}</span></td>
+            <td class="text-center"><span class="badge badge-s2">{{ row.s2 }}</span></td>
+            <td class="text-center">{{ row.ferias_dias }}</td>
+            <td class="text-center">{{ row.bloqueios_dias }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+      <tfoot class="table-light">
+        <tr>
+          <td><strong>Média</strong></td>
+          <td></td>
+          <td class="text-center fw-bold">{{ media_plantoes|floatformat:1 }}</td>
+          <td colspan="2" class="text-center text-muted small">—</td>
+          <td colspan="6" class="text-end text-muted small">
+            <span class="me-2">🟡 Acima da média</span><span>🔵 Abaixo da média</span>
+          </td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+</div>
+
+<script>
+function sortTable(colIndex, defaultDir) {
+  const table = document.getElementById('resumoTabela');
+  const tbody = table.querySelector('tbody');
+  const rows = Array.from(tbody.querySelectorAll('tr'));
+  const currentDir = table.getAttribute('data-sort-dir') === 'asc' ? 'desc' : 'asc';
+  const dir = defaultDir || currentDir;
+  table.setAttribute('data-sort-dir', dir);
+
+  rows.sort((a, b) => {
+    let aVal = a.cells[colIndex].textContent.trim();
+    let bVal = b.cells[colIndex].textContent.trim();
+    let aNum = parseFloat(aVal) || 0;
+    let bNum = parseFloat(bVal) || 0;
+    return dir === 'asc' ? aNum - bNum : bNum - aNum;
+  });
+  rows.forEach(row => tbody.appendChild(row));
+}
+</script>

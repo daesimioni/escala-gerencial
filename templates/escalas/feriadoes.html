@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}Feriadões — Escala{% endblock %}{% block page_title %}Feriadões{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <p class="text-muted small mb-0">Blocos de feriadão detectados automaticamente ou criados manualmente.</p>
+  <a href="{% url 'adicionar_feriadao' %}" class="btn btn-primary btn-sm"><i class="bi bi-plus-lg"></i> Feriadão Manual</a>
+</div>
+<div class="table-container"><div class="table-responsive"><table class="table">
+  <thead><tr><th>Nome</th><th>Início</th><th>Fim</th><th class="text-center">Dias</th><th class="text-center">Origem</th></tr></thead>
+  <tbody>
+    {% for fd in feriadoes %}
+      <tr>
+        <td><strong>{{ fd.nome }}</strong></td>
+        <td>{{ fd.data_inicio|date:"d/m/Y" }}</td><td>{{ fd.data_fim|date:"d/m/Y" }}</td>
+        <td class="text-center fw-bold">{{ fd.total_dias }}</td>
+        <td class="text-center">{% if fd.manual %}<span class="badge bg-warning text-dark">Manual</span>{% else %}<span class="badge bg-info">Automático</span>{% endif %}</td>
+      </tr>
+    {% empty %}
+      <tr><td colspan="5"><div class="empty-state py-3"><i class="bi bi-puzzle"></i><h6>Nenhum feriadão cadastrado</h6></div></td></tr>
+    {% endfor %}
+  </tbody>
+</table></div></div>
+{% endblock %}

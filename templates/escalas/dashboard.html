@@ -1,0 +1,164 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — Escala de Sobreaviso{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
+
+{% block content %}
+
+<!-- Stat Cards Row -->
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-3">
+    <div class="stat-card">
+      <div class="stat-icon" style="background:var(--color-primary-light);color:var(--color-primary)"><i class="bi bi-people"></i></div>
+      <div class="stat-value">{{ total_usuarios }}</div>
+      <div class="stat-label">Gerentes ativos</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="stat-card">
+      <div class="stat-icon" style="background:var(--color-feriado-light);color:var(--color-feriado-text)"><i class="bi bi-calendar-event"></i></div>
+      <div class="stat-value">{{ total_bloqueios }}</div>
+      <div class="stat-label">Bloqueios ativos</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="stat-card">
+      <div class="stat-icon" style="background:var(--color-conflito-light);color:var(--color-conflito)"><i class="bi bi-exclamation-triangle"></i></div>
+      <div class="stat-value">{{ alertas|length }}</div>
+      <div class="stat-label">Alertas</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="stat-card">
+      <div class="stat-icon" style="background:var(--color-s2-light);color:var(--color-s2-text)"><i class="bi bi-check-circle"></i></div>
+      <div class="stat-value">{{ hoje|date:"d/m" }}</div>
+      <div class="stat-label">{{ hoje|date:"l"|capfirst }}</div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-3">
+  <!-- Escala de Hoje -->
+  <div class="col-lg-6">
+    <div class="card">
+      <div class="card-header"><i class="bi bi-calendar-check text-primary"></i> Escala de Hoje — {{ hoje|date:"d/m/Y" }}</div>
+      <div class="card-body">
+        {% if escala_hoje %}
+          <div class="row g-3">
+            <div class="col-6">
+              <div class="p-3 rounded" style="background:var(--color-s1-light)">
+                <div style="font-size:.7rem;font-weight:600;color:var(--color-s1-text);text-transform:uppercase">S1 · Trabalha</div>
+                <div style="font-weight:700;font-size:1rem;color:var(--color-s1-text)">{{ escala_hoje.s1.nome|default:"—" }}</div>
+                <div style="font-size:.7rem;color:var(--color-s1-text);opacity:.7">Grupo {{ escala_hoje.s1.grupo.nome|default:"—" }}</div>
+              </div>
+            </div>
+            <div class="col-6">
+              <div class="p-3 rounded" style="background:var(--color-s2-light)">
+                <div style="font-size:.7rem;font-weight:600;color:var(--color-s2-text);text-transform:uppercase">S2 · Sobreaviso</div>
+                <div style="font-weight:700;font-size:1rem;color:var(--color-s2-text)">{{ escala_hoje.s2.nome|default:"—" }}</div>
+                <div style="font-size:.7rem;color:var(--color-s2-text);opacity:.7">Grupo {{ escala_hoje.s2.grupo.nome|default:"—" }}</div>
+              </div>
+            </div>
+          </div>
+          {% if escala_hoje.tem_conflito %}
+            <div class="alert alert-danger mt-3 mb-0 py-2 small"><i class="bi bi-x-circle"></i> Conflito detectado nesta escala</div>
+          {% endif %}
+        {% else %}
+          <div class="empty-state py-4">
+            <i class="bi bi-calendar-x" style="font-size:2rem"></i>
+            <h5>Sem escala para hoje</h5>
+            <p class="small">Dia comum — sem cobertura necessária.</p>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Alertas -->
+    {% if alertas %}
+    <div class="card mt-3 border-warning">
+      <div class="card-header" style="background:var(--color-bloqueio-light);border-color:var(--color-bloqueio)"><i class="bi bi-exclamation-triangle text-warning"></i> Alertas de Atenção</div>
+      <div class="card-body py-2">
+        {% for a in alertas %}
+          <div class="d-flex align-items-center gap-2 py-1 small">
+            <span class="text-warning"><i class="bi bi-dot"></i></span> {{ a }}
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Próximos Blocos + Ações -->
+  <div class="col-lg-6">
+    <div class="card">
+      <div class="card-header"><i class="bi bi-list-ul text-primary"></i> Próximos Blocos de Cobertura</div>
+      <div class="table-responsive">
+        <table class="table table-sm mb-0">
+          <thead><tr><th>Período</th><th>Tipo</th><th>Nome</th><th class="text-center">Dias</th></tr></thead>
+          <tbody>
+            {% for bloco in blocos_proximos %}
+              <tr>
+                <td style="white-space:nowrap">{{ bloco.days.0|date:"d/m" }} — {{ bloco.days|last|date:"d/m" }}</td>
+                <td>
+                  {% if bloco.type == 'FERIADAO' %}
+                    <span class="badge badge-feriadao">Feriadão</span>
+                  {% elif bloco.type == 'FERIADO' %}
+                    <span class="badge badge-feriado">Feriado</span>
+                  {% else %}
+                    <span class="badge bg-secondary">FDS</span>
+                  {% endif %}
+                </td>
+                <td>{{ bloco.nome }}</td>
+                <td class="text-center fw-bold">{{ bloco.days|length }}</td>
+              </tr>
+            {% empty %}
+              <tr><td colspan="4" class="text-center text-muted small py-3">Nenhum bloco próximo.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Meses Fechados -->
+    {% if meses_fechados %}
+    <div class="card mt-3 border-danger">
+      <div class="card-header bg-danger bg-opacity-10 text-danger"><i class="bi bi-lock-fill"></i> Meses Fechados</div>
+      <div class="card-body py-2">
+        {% for mf in meses_fechados %}
+          <span class="badge bg-danger me-1">{{ mf.mes|stringformat:"02d" }}/{{ mf.ano }}</span>
+        {% endfor %}
+        <div class="small text-muted mt-1">Estes meses estão protegidos contra alterações automáticas.</div>
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- Ações Rápidas -->
+    <div class="card mt-3">
+      <div class="card-header"><i class="bi bi-lightning-charge text-primary"></i> Ações Rápidas</div>
+      <div class="card-body">
+        <div class="row g-2">
+          <div class="col-6"><a href="{% url 'calendario' %}" class="btn btn-outline-primary btn-sm w-100"><i class="bi bi-calendar-month"></i> Calendário</a></div>
+          <div class="col-6"><a href="{% url 'adicionar_bloqueio' %}" class="btn btn-outline-danger btn-sm w-100"><i class="bi bi-lock"></i> Novo Bloqueio</a></div>
+          <div class="col-6"><a href="{% url 'gerar_escala' %}" class="btn btn-outline-warning btn-sm w-100"><i class="bi bi-gear"></i> Gerar Escala</a></div>
+          <div class="col-6"><a href="{% url 'relatorios' %}" class="btn btn-outline-info btn-sm w-100"><i class="bi bi-graph-up"></i> Relatórios</a></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Legenda -->
+    <div class="card mt-3">
+      <div class="card-header"><i class="bi bi-palette text-primary"></i> Legenda</div>
+      <div class="card-body">
+        <div class="legend">
+          <div class="legend-item"><span class="legend-swatch" style="background:var(--color-s1)"></span> S1 · Trabalha</div>
+          <div class="legend-item"><span class="legend-swatch" style="background:var(--color-s2)"></span> S2 · Sobreaviso</div>
+          <div class="legend-item"><span class="legend-swatch" style="background:var(--color-ferias)"></span> Férias</div>
+          <div class="legend-item"><span class="legend-swatch" style="background:var(--color-bloqueio)"></span> Indisponível</div>
+          <div class="legend-item"><span class="legend-swatch" style="background:var(--color-feriado)"></span> Feriado</div>
+          <div class="legend-item"><span class="legend-swatch" style="background:var(--color-feriadao)"></span> Feriadão</div>
+          <div class="legend-item"><span class="legend-swatch" style="background:var(--color-conflito)"></span> Conflito</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

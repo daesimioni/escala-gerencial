@@ -1,0 +1,41 @@
+{% extends "base.html" %}{% load static %}
+{% block title %}Editar {{ data|date:"d/m/Y" }} — Escala{% endblock %}
+{% block page_title %}Editar Escala — {{ data|date:"d/m/Y" }}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center"><div class="col-lg-8">
+  <div class="card">
+    <div class="card-header"><i class="bi bi-pencil-square"></i> {% if escala %}Alterar escala{% else %}Criar escala{% endif %} para {{ data|date:"l"|capfirst }}, {{ data|date:"d/m/Y" }}</div>
+    <div class="card-body">
+      <form method="post">
+        {% csrf_token %}
+        <div class="row g-3">
+          {% for field in form %}
+            <div class="col-md-6">
+              <label class="form-label">{{ field.label }}</label>
+              {{ field }}
+              {% if field.errors %}<div class="text-danger small mt-1">{{ field.errors }}</div>{% endif %}
+            </div>
+          {% endfor %}
+        </div>
+
+        <div class="alert alert-warning mt-3 small mb-0">
+          <i class="bi bi-info-circle"></i> <strong>Regra obrigatória:</strong> S1 e S2 devem ser de grupos diferentes (Grupo A + Grupo B).
+        </div>
+
+        <div class="mt-3 d-flex gap-2">
+          <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg"></i> Salvar</button>
+          <a href="{% url 'calendario_mes' ano=data.year mes=data.month %}" class="btn btn-outline-secondary">Cancelar</a>
+        </div>
+      </form>
+
+      {% if escala %}
+      <hr>
+      <form method="post" action="{% url 'limpar_dia' ano=data.year mes=data.month dia=data.day %}" onsubmit="return confirm('Remover permanentemente a escala deste dia?')">
+        {% csrf_token %}<button class="btn btn-outline-danger btn-sm"><i class="bi bi-trash"></i> Limpar este dia</button>
+      </form>
+      {% endif %}
+    </div>
+  </div>
+</div></div>
+{% endblock %}

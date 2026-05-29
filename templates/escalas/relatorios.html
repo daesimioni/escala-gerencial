@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}Relatórios — Escala{% endblock %}
+{% block page_title %}Relatórios{% endblock %}
+
+{% block content %}
+<!-- Filters -->
+<form method="get" class="row g-2 mb-3 align-items-end">
+  <div class="col-auto"><label class="form-label small">Ano</label>
+    <select name="ano" class="form-select form-select-sm">{% for a in anos_disponiveis %}<option value="{{ a }}" {% if a == ano %}selected{% endif %}>{{ a }}</option>{% endfor %}</select></div>
+  <div class="col-auto"><label class="form-label small">Mês</label>
+    <select name="mes" class="form-select form-select-sm">{% for m_val, m_nome in meses_disponiveis %}<option value="{{ m_val }}" {% if mes == m_val %}selected{% endif %}>{{ m_nome }}</option>{% endfor %}</select></div>
+  <div class="col-auto"><button type="submit" class="btn btn-primary btn-sm">Filtrar</button></div>
+  <div class="col-auto"><a href="{% url 'exportar_csv' %}?ano={{ ano }}{% if mes %}&mes={{ mes }}{% endif %}" class="btn btn-outline-success btn-sm"><i class="bi bi-filetype-csv"></i> Exportar CSV</a></div>
+</form>
+
+<!-- Report Table -->
+<div class="table-container mb-3">
+  <div class="table-responsive">
+    <table class="table">
+      <thead><tr><th>Usuário</th><th>Grp</th><th class="text-center">PL Total</th><th class="text-center">S1</th><th class="text-center">S2</th><th class="text-center">Férias (dias)</th><th class="text-center">Fd-S1</th><th class="text-center">Fd-S2</th><th>Última Escala</th></tr></thead>
+      <tbody>
+        {% for r in relatorio %}
+          <tr>
+            <td><strong>{{ r.usuario.nome }}</strong></td>
+            <td><span class="badge {% if r.grupo == 'A' %}badge-s1{% else %}badge-s2{% endif %}">{{ r.grupo }}</span></td>
+            <td class="text-center fw-bold">{{ r.pl_total }}</td>
+            <td class="text-center">{{ r.s1 }}</td>
+            <td class="text-center">{{ r.s2 }}</td>
+            <td class="text-center">{{ r.ferias_dias }}</td>
+            <td class="text-center">{{ r.feriadao_s1 }}</td>
+            <td class="text-center">{{ r.feriadao_s2 }}</td>
+            <td><small>{{ r.ultima_escala|date:"d/m/Y"|default:"—" }}</small></td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Alertas -->
+{% if alertas %}
+<div class="card border-warning">
+  <div class="card-header bg-warning bg-opacity-10"><i class="bi bi-exclamation-triangle text-warning"></i> Alertas de Desequilíbrio</div>
+  <div class="card-body py-2">{% for a in alertas %}<div class="small mb-1"><i class="bi bi-dot text-warning"></i> {{ a }}</div>{% endfor %}</div>
+</div>
+{% endif %}
+{% endblock %}

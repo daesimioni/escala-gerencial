@@ -1,0 +1,2393 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Escala de Sobreaviso — Gerentes</title>
+<style>
+/* ============================================================
+   RESET & BASE
+   ============================================================ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #f0f2f5;
+  --surface: #ffffff;
+  --surface2: #f8f9fa;
+  --border: #dee2e6;
+  --text: #212529;
+  --text2: #6c757d;
+  --text3: #adb5bd;
+  --primary: #2563eb;
+  --primary-light: #dbeafe;
+  --s1: #2563eb;
+  --s1-bg: #dbeafe;
+  --s1-text: #1e40af;
+  --s2: #16a34a;
+  --s2-bg: #dcfce7;
+  --s2-text: #166534;
+  --ferias: #dc2626;
+  --ferias-bg: #fee2e2;
+  --bloqueio: #d97706;
+  --bloqueio-bg: #fef3c7;
+  --feriado: #7c3aed;
+  --feriado-bg: #ede9fe;
+  --feriadao: #9333ea;
+  --feriadao-bg: #f3e8ff;
+  --weekend: #f1f5f9;
+  --today: #fef9c3;
+  --shadow: 0 1px 3px rgba(0,0,0,.08);
+  --shadow-lg: 0 4px 12px rgba(0,0,0,.1);
+  --radius: 8px;
+  --radius-sm: 4px;
+  --transition: 150ms ease;
+}
+
+body {
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  display: flex;
+  height: 100vh;
+  overflow: hidden;
+  user-select: none;
+}
+
+/* ============================================================
+   SIDEBAR
+   ============================================================ */
+.sidebar {
+  width: 340px;
+  min-width: 340px;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  z-index: 10;
+}
+
+.sidebar-header {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+  background: var(--primary);
+  color: #fff;
+}
+.sidebar-header h1 { font-size: 1.1rem; font-weight: 600; }
+.sidebar-header .sub { font-size: .75rem; opacity: .85; margin-top: 2px; }
+
+.sidebar-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--border);
+}
+.sidebar-tabs button {
+  flex: 1;
+  padding: 10px 4px;
+  border: none;
+  background: none;
+  font-size: .72rem;
+  font-weight: 600;
+  color: var(--text2);
+  cursor: pointer;
+  transition: var(--transition);
+  border-bottom: 2px solid transparent;
+}
+.sidebar-tabs button:hover { color: var(--text); }
+.sidebar-tabs button.active {
+  color: var(--primary);
+  border-bottom-color: var(--primary);
+}
+
+.sidebar-content { flex: 1; overflow-y: auto; padding: 12px 16px; }
+
+/* Nav */
+.nav-row {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 16px;
+  align-items: center;
+}
+.nav-row select, .nav-row input {
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: .8rem;
+  background: var(--surface);
+}
+.nav-row button {
+  padding: 6px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  cursor: pointer;
+  font-size: .8rem;
+  transition: var(--transition);
+}
+.nav-row button:hover { background: var(--surface2); }
+.nav-row button.primary {
+  background: var(--primary);
+  color: #fff;
+  border-color: var(--primary);
+}
+.nav-row button.primary:hover { opacity: .9; }
+
+/* User list */
+.user-list { list-style: none; }
+.user-item {
+  display: flex;
+  align-items: center;
+  padding: 8px 10px;
+  margin-bottom: 4px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: var(--transition);
+  gap: 8px;
+  font-size: .8rem;
+}
+.user-item:hover { background: var(--surface2); }
+.user-item.selected { background: var(--primary-light); }
+.user-item .badge {
+  font-size: .65rem;
+  padding: 2px 6px;
+  border-radius: 10px;
+  font-weight: 600;
+}
+.user-item .badge.a { background: var(--s1-bg); color: var(--s1-text); }
+.user-item .badge.b { background: var(--s2-bg); color: var(--s2-text); }
+.user-item .stats { font-size: .7rem; color: var(--text2); margin-left: auto; }
+.user-item.inactive { opacity: .4; }
+
+/* Block list */
+.block-list { list-style: none; font-size: .78rem; }
+.block-item {
+  display: flex;
+  align-items: center;
+  padding: 6px 8px;
+  margin-bottom: 3px;
+  border-radius: var(--radius-sm);
+  gap: 6px;
+  background: var(--surface2);
+}
+.block-item .remove-block {
+  margin-left: auto;
+  cursor: pointer;
+  color: var(--ferias);
+  font-weight: 700;
+  border: none;
+  background: none;
+  font-size: 1rem;
+}
+.block-item .remove-block:hover { opacity: .7; }
+
+/* Reports */
+.report-table { width: 100%; font-size: .75rem; border-collapse: collapse; }
+.report-table th, .report-table td {
+  padding: 6px 8px;
+  text-align: center;
+  border-bottom: 1px solid var(--border);
+}
+.report-table th { font-weight: 600; color: var(--text2); font-size: .7rem; }
+.report-table .highlight { background: var(--feriado-bg); }
+.report-table .warn { color: var(--bloqueio); font-weight: 600; }
+
+.section-title {
+  font-size: .75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--text2);
+  margin: 14px 0 6px;
+  letter-spacing: .5px;
+}
+
+/* ============================================================
+   MAIN CALENDAR
+   ============================================================ */
+.main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  padding: 10px 20px;
+  gap: 10px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+.toolbar .month-label { font-size: 1.1rem; font-weight: 600; min-width: 140px; }
+.toolbar button {
+  padding: 6px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  cursor: pointer;
+  font-size: .8rem;
+}
+.toolbar button:hover { background: var(--surface2); }
+.toolbar button.accent { background: var(--primary); color: #fff; border-color: var(--primary); }
+.toolbar .spacer { flex: 1; }
+
+.calendar-container {
+  flex: 1;
+  overflow: auto;
+  padding: 12px 20px 20px;
+}
+
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+  min-width: 700px;
+}
+
+.calendar-header {
+  text-align: center;
+  font-weight: 700;
+  font-size: .78rem;
+  padding: 8px;
+  color: var(--text2);
+  background: var(--surface2);
+  border-radius: var(--radius-sm);
+}
+
+.calendar-cell {
+  min-height: 90px;
+  padding: 6px;
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  cursor: pointer;
+  transition: var(--transition);
+  font-size: .72rem;
+  position: relative;
+}
+.calendar-cell:hover { box-shadow: var(--shadow-lg); z-index: 2; }
+.calendar-cell.other-month { opacity: .35; }
+.calendar-cell.weekend { background: var(--weekend); }
+.calendar-cell.feriado { background: var(--feriado-bg); border-color: var(--feriado); }
+.calendar-cell.feriadao { background: var(--feriadao-bg); border-color: var(--feriadao); }
+.calendar-cell.today { box-shadow: inset 0 0 0 2px var(--primary); }
+
+.calendar-cell .day-num {
+  font-weight: 700;
+  font-size: .85rem;
+  margin-bottom: 4px;
+}
+.calendar-cell.feriado .day-num { color: var(--feriado); }
+.calendar-cell.feriadao .day-num { color: var(--feriadao); }
+
+.calendar-cell .s1-tag, .calendar-cell .s2-tag {
+  display: block;
+  padding: 2px 5px;
+  border-radius: 3px;
+  margin: 1px 0;
+  font-size: .68rem;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.s1-tag { background: var(--s1-bg); color: var(--s1-text); }
+.s2-tag { background: var(--s2-bg); color: var(--s2-text); }
+
+.calendar-cell .ferias-tag {
+  display: block;
+  padding: 2px 5px;
+  border-radius: 3px;
+  margin: 1px 0;
+  font-size: .68rem;
+  background: var(--ferias-bg);
+  color: var(--ferias);
+  font-weight: 600;
+}
+.calendar-cell .bloqueio-tag {
+  display: block;
+  padding: 2px 5px;
+  border-radius: 3px;
+  margin: 1px 0;
+  font-size: .68rem;
+  background: var(--bloqueio-bg);
+  color: var(--bloqueio);
+  font-weight: 600;
+}
+
+.calendar-cell .holiday-name {
+  font-size: .62rem;
+  color: var(--feriado);
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.calendar-cell .feriadao-name {
+  font-size: .62rem;
+  color: var(--feriadao);
+  font-weight: 700;
+}
+.calendar-cell .manual-indicator {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  font-size: .55rem;
+  color: var(--bloqueio);
+}
+
+/* ============================================================
+   MODAL
+   ============================================================ */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.4);
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.modal {
+  background: var(--surface);
+  border-radius: var(--radius);
+  padding: 24px;
+  min-width: 420px;
+  max-width: 520px;
+  box-shadow: var(--shadow-lg);
+}
+.modal h2 { font-size: 1rem; margin-bottom: 16px; }
+.modal label {
+  display: block;
+  font-size: .78rem;
+  font-weight: 600;
+  margin: 10px 0 4px;
+}
+.modal select, .modal input, .modal textarea {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: .82rem;
+  font-family: inherit;
+}
+.modal textarea { resize: vertical; min-height: 60px; }
+.modal .btn-row {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  margin-top: 18px;
+}
+.modal .btn-row button {
+  padding: 8px 18px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  cursor: pointer;
+  font-size: .82rem;
+}
+.modal .btn-row button.save { background: var(--primary); color: #fff; border-color: var(--primary); }
+.modal .btn-row button.danger { background: var(--ferias); color: #fff; border-color: var(--ferias); }
+
+/* ============================================================
+   TOAST
+   ============================================================ */
+.toast-container {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  z-index: 200;
+}
+.toast {
+  padding: 10px 18px;
+  border-radius: var(--radius-sm);
+  color: #fff;
+  font-size: .82rem;
+  margin-top: 6px;
+  animation: slideIn .25s ease;
+  box-shadow: var(--shadow-lg);
+}
+.toast.success { background: #16a34a; }
+.toast.error { background: #dc2626; }
+.toast.info { background: var(--primary); }
+@keyframes slideIn { from { transform: translateX(120%); opacity: 0; } }
+
+/* ============================================================
+   PRINT
+   ============================================================ */
+@media print {
+  .sidebar, .toolbar, .modal-overlay, .toast-container { display: none !important; }
+  .main { overflow: visible; }
+  .calendar-container { padding: 0; }
+  .calendar-cell { min-height: 60px; font-size: .65rem; }
+}
+</style>
+</head>
+<body>
+
+<!-- ============================================================
+     SIDEBAR
+     ============================================================ -->
+<aside class="sidebar">
+  <div class="sidebar-header">
+    <h1>Escala de Sobreaviso</h1>
+    <div class="sub">Gerentes — Grupo A e B</div>
+  </div>
+
+  <div class="sidebar-tabs">
+    <button data-tab="nav" class="active">Calendário</button>
+    <button data-tab="users">Usuários</button>
+    <button data-tab="blocks">Bloqueios</button>
+    <button data-tab="reports">Relatórios</button>
+  </div>
+
+  <div class="sidebar-content" id="sidebarContent">
+    <!-- Tab: Nav -->
+    <div id="tab-nav">
+      <div class="nav-row">
+        <select id="monthSelect"></select>
+        <input type="number" id="yearInput" value="2026" min="2024" max="2030" style="width:70px">
+      </div>
+      <div class="nav-row">
+        <button onclick="prevMonth()" title="Mês anterior">◀</button>
+        <button onclick="goToToday()">Hoje</button>
+        <button onclick="nextMonth()" title="Próximo mês">▶</button>
+        <button class="primary" onclick="regenerateMonth()" title="Regera escala do mês atual">Gerar</button>
+      </div>
+      <div class="nav-row" style="flex-wrap:wrap">
+        <button onclick="exportJSON()" title="Salvar backup">💾 Backup</button>
+        <button onclick="importJSON()" title="Restaurar backup">📂 Restaurar</button>
+        <button onclick="exportCSV()">📊 CSV</button>
+        <button onclick="window.print()">🖨️ Imprimir</button>
+      </div>
+
+      <div class="section-title">Legenda</div>
+      <div style="font-size:.72rem;line-height:1.8">
+        <div><span class="s1-tag" style="display:inline;padding:1px 6px">S1</span> Trabalha</div>
+        <div><span class="s2-tag" style="display:inline;padding:1px 6px">S2</span> Sobreaviso</div>
+        <div><span style="display:inline;padding:1px 6px;background:var(--ferias-bg);color:var(--ferias);border-radius:3px;font-size:.68rem;font-weight:600">F</span> Férias</div>
+        <div><span style="display:inline;padding:1px 6px;background:var(--bloqueio-bg);color:var(--bloqueio);border-radius:3px;font-size:.68rem;font-weight:600">N</span> Indisponível</div>
+        <div style="color:var(--feriado)">🟣 Feriado</div>
+        <div style="color:var(--feriadao)">🟣 Feriadão</div>
+      </div>
+
+      <div class="section-title">Resumo do Mês</div>
+      <div id="monthSummary" style="font-size:.75rem"></div>
+    </div>
+
+    <!-- Tab: Users -->
+    <div id="tab-users" style="display:none">
+      <div class="section-title">Grupo A</div>
+      <ul class="user-list" id="userListA"></ul>
+      <div class="section-title">Grupo B</div>
+      <ul class="user-list" id="userListB"></ul>
+      <button onclick="showAddUserModal()" style="margin-top:10px;padding:6px 14px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);cursor:pointer;font-size:.78rem">+ Adicionar Usuário</button>
+    </div>
+
+    <!-- Tab: Blocks -->
+    <div id="tab-blocks" style="display:none">
+      <div class="section-title">Bloqueios Cadastrados</div>
+      <ul class="block-list" id="blockList"></ul>
+      <button onclick="showAddBlockModal()" style="margin-top:10px;padding:6px 14px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);cursor:pointer;font-size:.78rem">+ Adicionar Bloqueio</button>
+    </div>
+
+    <!-- Tab: Reports -->
+    <div id="tab-reports" style="display:none">
+      <div class="section-title">Totais por Usuário</div>
+      <table class="report-table" id="reportTable">
+        <thead><tr><th>Usuário</th><th>Grp</th><th>PL</th><th>S1</th><th>S2</th><th>Férias</th><th>Bloq</th><th>Fd-S1</th><th>Fd-S2</th></tr></thead>
+        <tbody></tbody>
+      </table>
+      <div class="section-title">Alertas</div>
+      <div id="alertsList" style="font-size:.75rem"></div>
+    </div>
+  </div>
+</aside>
+
+<!-- ============================================================
+     MAIN CALENDAR AREA
+     ============================================================ -->
+<main class="main">
+  <div class="toolbar">
+    <button onclick="prevMonth()">◀</button>
+    <span class="month-label" id="monthLabel">Maio 2026</span>
+    <button onclick="nextMonth()">▶</button>
+    <button onclick="goToToday()">Hoje</button>
+    <span class="spacer"></span>
+    <button onclick="regenerateMonth()" class="accent">⟳ Regenerar Escala</button>
+  </div>
+  <div class="calendar-container">
+    <div class="calendar-grid" id="calendarGrid"></div>
+  </div>
+</main>
+
+<!-- ============================================================
+     MODAL OVERLAY (hidden by default)
+     ============================================================ -->
+<div class="modal-overlay" id="modalOverlay" style="display:none"></div>
+
+<!-- Toast container -->
+<div class="toast-container" id="toastContainer"></div>
+
+<!-- Hidden file input for import -->
+<input type="file" id="importFileInput" style="display:none" accept=".json">
+
+<script>
+/* ============================================================
+   CONFIG: BRAZILIAN HOLIDAYS 2025-2027
+   ============================================================ */
+const HOLIDAYS = {
+  /* 2025 */
+  '2025-01-01': 'Confraternização Universal',
+  '2025-03-03': 'Carnaval',
+  '2025-03-04': 'Carnaval',
+  '2025-04-18': 'Sexta-feira Santa',
+  '2025-04-21': 'Tiradentes',
+  '2025-05-01': 'Dia do Trabalho',
+  '2025-06-19': 'Corpus Christi',
+  '2025-09-07': 'Independência do Brasil',
+  '2025-10-12': 'N. Sra. Aparecida',
+  '2025-11-02': 'Finados',
+  '2025-11-15': 'Proclamação da República',
+  '2025-11-20': 'Consciência Negra',
+  '2025-12-25': 'Natal',
+  /* 2026 */
+  '2026-01-01': 'Confraternização Universal',
+  '2026-02-16': 'Carnaval',
+  '2026-02-17': 'Carnaval',
+  '2026-04-03': 'Sexta-feira Santa',
+  '2026-04-21': 'Tiradentes',
+  '2026-05-01': 'Dia do Trabalho',
+  '2026-06-04': 'Corpus Christi',
+  '2026-09-07': 'Independência do Brasil',
+  '2026-10-12': 'N. Sra. Aparecida',
+  '2026-11-02': 'Finados',
+  '2026-11-15': 'Proclamação da República',
+  '2026-11-20': 'Consciência Negra',
+  '2026-12-25': 'Natal',
+  /* 2027 */
+  '2027-01-01': 'Confraternização Universal',
+  '2027-02-15': 'Carnaval',
+  '2027-02-16': 'Carnaval',
+  '2027-03-26': 'Sexta-feira Santa',
+  '2027-04-21': 'Tiradentes',
+  '2027-05-01': 'Dia do Trabalho',
+  '2027-05-27': 'Corpus Christi',
+  '2027-09-07': 'Independência do Brasil',
+  '2027-10-12': 'N. Sra. Aparecida',
+  '2027-11-02': 'Finados',
+  '2027-11-15': 'Proclamação da República',
+  '2027-11-20': 'Consciência Negra',
+  '2027-12-25': 'Natal'
+};
+
+/* ============================================================
+   DATA STORE
+   ============================================================ */
+const DEFAULT_USERS = [
+  { id: 1,  name: 'Copel 1', group: 'A', ferias_count: 0, plantoes_count: 0, active: true },
+  { id: 2,  name: 'Copel 2', group: 'A', ferias_count: 0, plantoes_count: 0, active: true },
+  { id: 3,  name: 'Copel 3', group: 'A', ferias_count: 0, plantoes_count: 0, active: true },
+  { id: 4,  name: 'Copel 4', group: 'A', ferias_count: 0, plantoes_count: 0, active: true },
+  { id: 5,  name: 'Copel 5', group: 'A', ferias_count: 0, plantoes_count: 0, active: true },
+  { id: 6,  name: 'Copel 6', group: 'B', ferias_count: 0, plantoes_count: 0, active: true },
+  { id: 7,  name: 'Copel 7', group: 'B', ferias_count: 0, plantoes_count: 0, active: true },
+  { id: 8,  name: 'Copel 8', group: 'B', ferias_count: 0, plantoes_count: 0, active: true },
+  { id: 9,  name: 'Copel 9', group: 'B', ferias_count: 0, plantoes_count: 0, active: true }
+];
+
+let store = {
+  users: JSON.parse(JSON.stringify(DEFAULT_USERS)),
+  blocks: [],       // { id, userId, startDate, endDate, type: 'F'|'N', reason }
+  assignments: {},  // { 'YYYY-MM-DD': { s1: userId|null, s2: userId|null, manual: bool, editedBy: str, editedAt: str } }
+  meta: {
+    feriadao_s1_order_a: [],  // rotation tracking per group
+    feriadao_s2_order_a: [],
+    feriadao_s1_order_b: [],
+    feriadao_s2_order_b: [],
+    lastModified: null
+  }
+};
+
+let nextId = 100;
+
+/* ============================================================
+   HELPERS
+   ============================================================ */
+function fmtDate(y, m, d) {
+  return `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+}
+
+function parseDate(str) {
+  const [y, m, d] = str.split('-').map(Number);
+  return { y, m, d };
+}
+
+function daysInMonth(y, m) {
+  return new Date(y, m, 0).getDate();
+}
+
+function getDayOfWeek(y, m, d) {
+  return new Date(y, m - 1, d).getDay(); // 0=Sun, 6=Sat
+}
+
+function isWeekend(y, m, d) {
+  const dow = getDayOfWeek(y, m, d);
+  return dow === 0 || dow === 6;
+}
+
+function isHoliday(dateStr) {
+  return HOLIDAYS.hasOwnProperty(dateStr);
+}
+
+function getHolidayName(dateStr) {
+  return HOLIDAYS[dateStr] || null;
+}
+
+function addDays(dateStr, n) {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  const dt = new Date(y, m - 1, d);
+  dt.setDate(dt.getDate() + n);
+  return fmtDate(dt.getFullYear(), dt.getMonth() + 1, dt.getDate());
+}
+
+function dateDiff(d1, d2) {
+  const a = new Date(d1);
+  const b = new Date(d2);
+  return Math.round((b - a) / (1000 * 60 * 60 * 24));
+}
+
+function getUser(id) {
+  return store.users.find(u => u.id === id);
+}
+
+function isUserBlocked(userId, dateStr) {
+  return store.blocks.some(b =>
+    b.userId === userId && dateStr >= b.startDate && dateStr <= b.endDate
+  );
+}
+
+function getBlockForUser(userId, dateStr) {
+  return store.blocks.find(b =>
+    b.userId === userId && dateStr >= b.startDate && dateStr <= b.endDate
+  );
+}
+
+function getAvailableUsers(dateStr, group) {
+  return store.users.filter(u =>
+    u.active &&
+    u.group === group &&
+    !isUserBlocked(u.id, dateStr)
+  );
+}
+
+/* ============================================================
+   FERIADÃO DETECTION
+   ============================================================ */
+function detectFeriadoes(y, m) {
+  /* Strategy:
+     1. Mark weekends and holidays for target month + 10 buffer days on each side
+     2. Add "bridge" days: standard Brazilian emenda practice
+        - Holiday on Tue → Mon becomes bridge
+        - Holiday on Thu → Fri becomes bridge
+     3. Find consecutive runs of (weekend | holiday | bridge) days
+     4. Classify: run has holiday + runs >= 2 → feriadão
+                   run has holiday, length 1 → isolated holiday
+                   run has only weekends → regular weekend block */
+
+  /* Build date range: target month + 10 days before + 10 days after */
+  const startDate = addDays(fmtDate(y, m, 1), -10);
+  const endDate = addDays(fmtDate(y, m, daysInMonth(y, m)), 10);
+
+  /* Mark all days in range */
+  const marks = {};  /* dateStr -> { isWeekend, isHoliday, isBridge } */
+  let cursor = startDate;
+  while (cursor <= endDate) {
+    const pd = parseDate(cursor);
+    marks[cursor] = {
+      isWeekend: isWeekend(pd.y, pd.m, pd.d),
+      isHoliday: isHoliday(cursor),
+      isBridge: false
+    };
+    cursor = addDays(cursor, 1);
+  }
+
+  /* Apply bridge rule: for each holiday, check if it's Tue or Thu */
+  for (const ds of Object.keys(marks)) {
+    if (marks[ds].isHoliday) {
+      const dow = new Date(ds + 'T12:00:00').getDay(); /* avoid timezone issues */
+      if (dow === 2) {
+        /* Holiday on Tuesday → preceding Monday is bridge */
+        const mon = addDays(ds, -1);
+        if (marks[mon] && !marks[mon].isWeekend && !marks[mon].isHoliday) {
+          marks[mon].isBridge = true;
+        }
+      } else if (dow === 4) {
+        /* Holiday on Thursday → following Friday is bridge */
+        const fri = addDays(ds, 1);
+        if (marks[fri] && !marks[fri].isWeekend && !marks[fri].isHoliday) {
+          marks[fri].isBridge = true;
+        }
+      }
+    }
+  }
+
+  /* Find consecutive runs where (isWeekend || isHoliday || isBridge) is true */
+  const sortedDates = Object.keys(marks).sort();
+  const runs = [];
+  let currentRun = [];
+
+  for (const ds of sortedDates) {
+    const mk = marks[ds];
+    if (mk.isWeekend || mk.isHoliday || mk.isBridge) {
+      currentRun.push(ds);
+    } else {
+      if (currentRun.length > 0) {
+        runs.push([...currentRun]);
+        currentRun = [];
+      }
+    }
+  }
+  if (currentRun.length > 0) runs.push([...currentRun]);
+
+  /* Classify runs */
+  const feriadoes = [];
+  const weekendBlocks = [];
+  const isolatedHolidays = [];
+
+  for (const run of runs) {
+    const hasHoliday = run.some(ds => marks[ds].isHoliday);
+    const hasWeekend = run.some(ds => marks[ds].isWeekend);
+
+    if (hasHoliday && run.length >= 2) {
+      /* Feriadão: multi-day block with at least one holiday */
+      const names = run.filter(ds => marks[ds].isHoliday).map(ds => getHolidayName(ds));
+      const label = names.length <= 2 ? names.join(' / ') : names[0] + ' +' + (names.length - 1);
+      feriadoes.push({
+        days: run.filter(ds => {
+          const pd = parseDate(ds);
+          return pd.y === y && pd.m === m;
+        }),
+        allDays: run,
+        label: label || 'Feriadão',
+        hasHoliday: true
+      });
+    } else if (hasHoliday && run.length === 1) {
+      /* Isolated holiday */
+      isolatedHolidays.push({ days: run, label: getHolidayName(run[0]) });
+    } else {
+      /* Regular weekend block */
+      weekendBlocks.push({
+        days: run.filter(ds => {
+          const pd = parseDate(ds);
+          return pd.y === y && pd.m === m;
+        })
+      });
+    }
+  }
+
+  const validWeekendBlocks = weekendBlocks.filter(b => b.days.length > 0);
+
+  return { feriadoes, weekendBlocks: validWeekendBlocks, isolatedHolidays };
+}
+
+/* ============================================================
+   COVERAGE BLOCK DETECTION
+   Groups days needing coverage into blocks for assignment
+   ============================================================ */
+function getCoverageBlocks(y, m) {
+  const { feriadoes, weekendBlocks, isolatedHolidays } = detectFeriadoes(y, m);
+
+  const blocks = [];
+
+  /* Feriadão blocks — assign as a unit */
+  for (const fd of feriadoes) {
+    blocks.push({
+      days: fd.days.sort(),
+      type: 'feriadao',
+      label: fd.label
+    });
+  }
+
+  /* Isolated holidays — each is a 1-day block */
+  for (const ih of isolatedHolidays) {
+    const dayParts = parseDate(ih.days[0]);
+    if (dayParts.y === y && dayParts.m === m) {
+      blocks.push({
+        days: ih.days,
+        type: 'holiday',
+        label: ih.label
+      });
+    }
+  }
+
+  /* Weekend blocks that are NOT already covered by feriadões */
+  const feriadaoDays = new Set(feriadoes.flatMap(fd => fd.days));
+
+  for (const wb of weekendBlocks) {
+    const uncovered = wb.days.filter(d => !feriadaoDays.has(d));
+    if (uncovered.length > 0) {
+      /* Split into consecutive sub-runs */
+      const subRuns = [];
+      let cur = [];
+      for (const d of uncovered.sort()) {
+        if (cur.length === 0) {
+          cur.push(d);
+        } else {
+          const prev = cur[cur.length - 1];
+          if (dateDiff(prev, d) === 1) {
+            cur.push(d);
+          } else {
+            subRuns.push([...cur]);
+            cur = [d];
+          }
+        }
+      }
+      if (cur.length > 0) subRuns.push([...cur]);
+
+      for (const sr of subRuns) {
+        blocks.push({
+          days: sr,
+          type: 'weekend',
+          label: sr.length === 2 ? 'Fim de Semana' : 'FDS Parcial'
+        });
+      }
+    }
+  }
+
+  /* Sort by start date */
+  blocks.sort((a, b) => a.days[0].localeCompare(b.days[0]));
+
+  return blocks;
+}
+
+/* ============================================================
+   ASSIGNMENT ENGINE
+   ============================================================ */
+function getUserStats(userId) {
+  const u = getUser(userId);
+  let s1 = 0, s2 = 0, feriadao_s1 = 0, feriadao_s2 = 0;
+  let lastAssigned = null;
+
+  for (const [dateStr, a] of Object.entries(store.assignments)) {
+    if (a.s1 === userId) { s1++; if (!lastAssigned || dateStr > lastAssigned) lastAssigned = dateStr; }
+    if (a.s2 === userId) { s2++; if (!lastAssigned || dateStr > lastAssigned) lastAssigned = dateStr; }
+  }
+
+  /* Count feriadão S1/S2 separately by checking if assignment date falls in a feriadão */
+  /* We compute this on-the-fly from known feriadoes */
+
+  return {
+    plantoes: s1 + s2,
+    s1, s2,
+    feriadao_s1: u.feriadao_s1_count || 0,
+    feriadao_s2: u.feriadao_s2_count || 0,
+    lastAssigned
+  };
+}
+
+function calculateUserCounts() {
+  const counts = {};
+  for (const u of store.users) {
+    counts[u.id] = { plantoes: 0, s1: 0, s2: 0, feriadao_s1: u.feriadao_s1_count || 0, feriadao_s2: u.feriadao_s2_count || 0, lastAssigned: null };
+  }
+  for (const [dateStr, a] of Object.entries(store.assignments)) {
+    if (a.s1 && counts[a.s1]) {
+      counts[a.s1].plantoes++;
+      counts[a.s1].s1++;
+      if (!counts[a.s1].lastAssigned || dateStr > counts[a.s1].lastAssigned) counts[a.s1].lastAssigned = dateStr;
+    }
+    if (a.s2 && counts[a.s2]) {
+      counts[a.s2].plantoes++;
+      counts[a.s2].s2++;
+      if (!counts[a.s2].lastAssigned || dateStr > counts[a.s2].lastAssigned) counts[a.s2].lastAssigned = dateStr;
+    }
+  }
+  return counts;
+}
+
+function scoreCandidate(userId, role, block, counts) {
+  const c = counts[userId] || { plantoes: 0, s1: 0, s2: 0, feriadao_s1: 0, feriadao_s2: 0, lastAssigned: null };
+  let score = 0;
+
+  /* Plantão count (heaviest weight) */
+  score += c.plantoes * 100;
+
+  /* Role balance */
+  if (role === 'S1') score += c.s1 * 50;
+  else score += c.s2 * 50;
+
+  /* Recency penalty */
+  if (c.lastAssigned) {
+    const gap = dateDiff(c.lastAssigned, block.days[0]);
+    if (gap < 7) score += 500;
+    else if (gap < 10) score += 250;
+    else if (gap < 14) score += 100;
+    else if (gap < 21) score += 30;
+  } else {
+    /* Never assigned — prefer (negative score bonus) */
+    score -= 200;
+  }
+
+  /* Feriadão specific */
+  if (block.type === 'feriadao') {
+    if (role === 'S1') score += c.feriadao_s1 * 300;
+    else score += c.feriadao_s2 * 300;
+  }
+
+  /* Check blocks near the assignment — penalize if user has block nearby */
+  const u = getUser(userId);
+  if (u) {
+    for (const day of block.days) {
+      if (isUserBlocked(userId, day)) return Infinity; /* blocked on a covered day */
+    }
+    /* Check if user has block within 2 days of the block edges */
+    const blockStart = block.days[0];
+    const blockEnd = block.days[block.days.length - 1];
+    for (const b of store.blocks) {
+      if (b.userId === userId) {
+        const gapStart = Math.abs(dateDiff(b.startDate, blockStart));
+        const gapEnd = Math.abs(dateDiff(b.endDate, blockEnd));
+        const gapStart2 = Math.abs(dateDiff(b.startDate, blockEnd));
+        const gapEnd2 = Math.abs(dateDiff(b.endDate, blockStart));
+        const minGap = Math.min(gapStart, gapEnd, gapStart2, gapEnd2);
+        if (minGap <= 2) score += 1000; /* Heavy penalty for assignments adjacent to blocks */
+      }
+    }
+  }
+
+  return score;
+}
+
+function assignBlock(block, counts, feriadaoQueue) {
+  /* Get available users per group for the first day (proxy for whole block) */
+  const groupA = getAvailableUsers(block.days[0], 'A');
+  const groupB = getAvailableUsers(block.days[0], 'B');
+
+  if (groupA.length === 0 || groupB.length === 0) {
+    return null; /* Cannot assign */
+  }
+
+  /* If feriadão, use rotation queues */
+  let candidatesA, candidatesB;
+
+  if (block.type === 'feriadao') {
+    /* Sort by feriadão rotation position */
+    const orderS1A = store.meta.feriadao_s1_order_a || [];
+    const orderS2A = store.meta.feriadao_s2_order_a || [];
+    const orderS1B = store.meta.feriadao_s1_order_b || [];
+    const orderS2B = store.meta.feriadao_s2_order_b || [];
+
+    /* Users who haven't been in the rotation go first */
+    const rankS1A = (id) => { const i = orderS1A.indexOf(id); return i === -1 ? -1 : i; };
+    const rankS2A = (id) => { const i = orderS2A.indexOf(id); return i === -1 ? -1 : i; };
+    const rankS1B = (id) => { const i = orderS1B.indexOf(id); return i === -1 ? -1 : i; };
+    const rankS2B = (id) => { const i = orderS2B.indexOf(id); return i === -1 ? -1 : i; };
+  }
+
+  let bestPair = null;
+  let bestScore = Infinity;
+
+  for (const ua of groupA) {
+    for (const ub of groupB) {
+      /* Try ua=S1, ub=S2 */
+      let s1 = scoreCandidate(ua.id, 'S1', block, counts);
+      let s2 = scoreCandidate(ub.id, 'S2', block, counts);
+      if (s1 !== Infinity && s2 !== Infinity && (s1 + s2) < bestScore) {
+        bestScore = s1 + s2;
+        bestPair = { s1: ua.id, s2: ub.id };
+      }
+
+      /* Try ua=S2, ub=S1 */
+      s1 = scoreCandidate(ub.id, 'S1', block, counts);
+      s2 = scoreCandidate(ua.id, 'S2', block, counts);
+      if (s1 !== Infinity && s2 !== Infinity && (s1 + s2) < bestScore) {
+        bestScore = s1 + s2;
+        bestPair = { s1: ub.id, s2: ua.id };
+      }
+    }
+  }
+
+  /* If feriadão, apply special day rules and update rotation */
+  if (bestPair && block.type === 'feriadao') {
+    const days = block.days.sort();
+    const assignments = {};
+
+    if (days.length === 1) {
+      assignments[days[0]] = { s1: bestPair.s1, s2: bestPair.s2 };
+    } else if (days.length === 2) {
+      assignments[days[0]] = { s1: bestPair.s1, s2: bestPair.s2 };
+      assignments[days[1]] = { s1: bestPair.s2, s2: bestPair.s1 };
+    } else if (days.length === 3) {
+      /* First 2 days: S1 works, S2 on-call */
+      assignments[days[0]] = { s1: bestPair.s1, s2: bestPair.s2 };
+      assignments[days[1]] = { s1: bestPair.s1, s2: bestPair.s2 };
+      /* Last day: S2 works, S1 on-call */
+      assignments[days[2]] = { s1: bestPair.s2, s2: bestPair.s1 };
+    } else {
+      /* 4+ days: first 2: S1 works, middle balanced, last: S2 works */
+      assignments[days[0]] = { s1: bestPair.s1, s2: bestPair.s2 };
+      assignments[days[1]] = { s1: bestPair.s1, s2: bestPair.s2 };
+      /* Middle days: alternate */
+      for (let i = 2; i < days.length - 1; i++) {
+        if (i % 2 === 0) {
+          assignments[days[i]] = { s1: bestPair.s1, s2: bestPair.s2 };
+        } else {
+          assignments[days[i]] = { s1: bestPair.s2, s2: bestPair.s1 };
+        }
+      }
+      /* Last day: S2 works, S1 on-call */
+      assignments[days[days.length - 1]] = { s1: bestPair.s2, s2: bestPair.s1 };
+    }
+
+    bestPair._assignments = assignments;
+
+    /* Update feriadão rotation tracking */
+    if (!bestPair._feriadaoUpdate) bestPair._feriadaoUpdate = {};
+  } else if (bestPair) {
+    /* Regular block: same pair for all days, but alternate S1/S2 for multi-day */
+    const days = block.days.sort();
+    const assignments = {};
+    for (let i = 0; i < days.length; i++) {
+      if (i % 2 === 0) {
+        assignments[days[i]] = { s1: bestPair.s1, s2: bestPair.s2 };
+      } else {
+        assignments[days[i]] = { s1: bestPair.s2, s2: bestPair.s1 };
+      }
+    }
+    bestPair._assignments = assignments;
+  }
+
+  return bestPair;
+}
+
+function updateFeriadaoRotation(s1UserId, s2UserId) {
+  const s1User = getUser(s1UserId);
+  const s2User = getUser(s2UserId);
+
+  if (s1User) {
+    if (s1User.group === 'A') {
+      store.meta.feriadao_s1_order_a = store.meta.feriadao_s1_order_a.filter(id => id !== s1UserId);
+      store.meta.feriadao_s1_order_a.push(s1UserId);
+    } else {
+      store.meta.feriadao_s1_order_b = store.meta.feriadao_s1_order_b.filter(id => id !== s1UserId);
+      store.meta.feriadao_s1_order_b.push(s1UserId);
+    }
+    /* Update user counter */
+    s1User.feriadao_s1_count = (s1User.feriadao_s1_count || 0) + 1;
+  }
+
+  if (s2User) {
+    if (s2User.group === 'A') {
+      store.meta.feriadao_s2_order_a = store.meta.feriadao_s2_order_a.filter(id => id !== s2UserId);
+      store.meta.feriadao_s2_order_a.push(s2UserId);
+    } else {
+      store.meta.feriadao_s2_order_b = store.meta.feriadao_s2_order_b.filter(id => id !== s2UserId);
+      store.meta.feriadao_s2_order_b.push(s2UserId);
+    }
+    s2User.feriadao_s2_count = (s2User.feriadao_s2_count || 0) + 1;
+  }
+}
+
+function generateMonthAssignments(y, m, preserveManual = true) {
+  const blocks = getCoverageBlocks(y, m);
+  const counts = calculateUserCounts();
+
+  /* Remove existing auto-generated assignments for this month, keep manual ones */
+  const monthPrefix = fmtDate(y, m, 1).substring(0, 7);
+  const manualAssignments = {};
+
+  if (preserveManual) {
+    for (const [dateStr, a] of Object.entries(store.assignments)) {
+      if (dateStr.startsWith(monthPrefix) && a.manual) {
+        manualAssignments[dateStr] = a;
+      }
+    }
+
+    /* Remove all assignments for this month */
+    for (const key of Object.keys(store.assignments)) {
+      if (key.startsWith(monthPrefix)) {
+        delete store.assignments[key];
+      }
+    }
+  } else {
+    for (const key of Object.keys(store.assignments)) {
+      if (key.startsWith(monthPrefix)) {
+        delete store.assignments[key];
+      }
+    }
+  }
+
+  /* Restore manual assignments */
+  for (const [dateStr, a] of Object.entries(manualAssignments)) {
+    store.assignments[dateStr] = a;
+    /* Update counts */
+    if (a.s1) {
+      const s1u = getUser(a.s1);
+      if (s1u && a.s1) {
+        counts[a.s1] = counts[a.s1] || { plantoes: 0, s1: 0, s2: 0, feriadao_s1: 0, feriadao_s2: 0, lastAssigned: null };
+        counts[a.s1].plantoes++;
+        counts[a.s1].s1++;
+      }
+    }
+    if (a.s2) {
+      const s2u = getUser(a.s2);
+      if (s2u && a.s2) {
+        counts[a.s2] = counts[a.s2] || { plantoes: 0, s1: 0, s2: 0, feriadao_s1: 0, feriadao_s2: 0, lastAssigned: null };
+        counts[a.s2].plantoes++;
+        counts[a.s2].s2++;
+      }
+    }
+  }
+
+  /* Process each block */
+  for (const block of blocks) {
+    /* Skip days that already have manual assignments */
+    const uncoveredDays = block.days.filter(d => !manualAssignments[d]);
+    if (uncoveredDays.length === 0) continue;
+
+    /* Create a sub-block with only uncovered days */
+    let subBlock;
+    if (uncoveredDays.length === block.days.length) {
+      subBlock = block;
+    } else {
+      /* Split uncovered days into sub-runs */
+      const subRuns = [];
+      let cur = [];
+      for (const d of uncoveredDays.sort()) {
+        if (cur.length === 0 || dateDiff(cur[cur.length - 1], d) === 1) {
+          cur.push(d);
+        } else {
+          subRuns.push([...cur]);
+          cur = [d];
+        }
+      }
+      if (cur.length > 0) subRuns.push([...cur]);
+
+      /* Process each sub-run as its own block */
+      for (const sr of subRuns) {
+        const miniBlock = { ...block, days: sr };
+        const pair = assignBlock(miniBlock, counts, store.meta);
+        if (pair) {
+          const assigns = pair._assignments || {};
+          for (const [d, a] of Object.entries(assigns)) {
+            if (!manualAssignments[d]) {
+              store.assignments[d] = { ...a, manual: false, editedBy: null, editedAt: null };
+              counts[a.s1] = counts[a.s1] || { plantoes: 0, s1: 0, s2: 0 };
+              counts[a.s1].plantoes++;
+              counts[a.s1].s1++;
+              counts[a.s2] = counts[a.s2] || { plantoes: 0, s1: 0, s2: 0 };
+              counts[a.s2].plantoes++;
+              counts[a.s2].s2++;
+              if (block.type === 'feriadao') {
+                updateFeriadaoRotation(a.s1, a.s2);
+              }
+            }
+          }
+        }
+      }
+      continue;
+    }
+
+    const pair = assignBlock(subBlock, counts, store.meta);
+    if (pair) {
+      const assigns = pair._assignments || {};
+      for (const [d, a] of Object.entries(assigns)) {
+        store.assignments[d] = { ...a, manual: false, editedBy: null, editedAt: null };
+        counts[a.s1] = counts[a.s1] || { plantoes: 0, s1: 0, s2: 0 };
+        counts[a.s1].plantoes++;
+        counts[a.s1].s1++;
+        counts[a.s2] = counts[a.s2] || { plantoes: 0, s1: 0, s2: 0 };
+        counts[a.s2].plantoes++;
+        counts[a.s2].s2++;
+        if (block.type === 'feriadao') {
+          updateFeriadaoRotation(a.s1, a.s2);
+        }
+      }
+    }
+  }
+
+  /* Update user plantão and férias counts based on all data */
+  recalculateUserCounts();
+  store.meta.lastModified = new Date().toISOString();
+  saveStore();
+}
+
+function recalculateUserCounts() {
+  /* Reset counts */
+  for (const u of store.users) {
+    u.plantoes_count = 0;
+    u.ferias_count = 0;
+  }
+
+  /* Count from blocks */
+  for (const b of store.blocks) {
+    if (b.type === 'F') {
+      const u = getUser(b.userId);
+      if (u) {
+        const days = dateDiff(b.startDate, b.endDate) + 1;
+        u.ferias_count = (u.ferias_count || 0) + days;
+      }
+    }
+  }
+
+  /* Count plantões from assignments */
+  for (const [dateStr, a] of Object.entries(store.assignments)) {
+    if (a.s1) {
+      const u = getUser(a.s1);
+      if (u) u.plantoes_count = (u.plantoes_count || 0) + 1;
+    }
+    if (a.s2) {
+      const u = getUser(a.s2);
+      if (u) u.plantoes_count = (u.plantoes_count || 0) + 1;
+    }
+  }
+}
+
+/* ============================================================
+   INITIAL DATA: May 2026 base scale
+   ============================================================ */
+function initializeBaseData() {
+  /* Pre-populate May 2026 with a reasonable base scale.
+     This represents the historical data from the original planilha. */
+  const baseAssignments = {
+    /* Weekend May 2-3 */
+    '2026-05-02': { s1: 1, s2: 6, manual: false },
+    '2026-05-03': { s1: 6, s2: 1, manual: false },
+    /* Weekend May 9-10 */
+    '2026-05-09': { s1: 2, s2: 7, manual: false },
+    '2026-05-10': { s1: 7, s2: 2, manual: false },
+    /* Weekend May 16-17 */
+    '2026-05-16': { s1: 3, s2: 8, manual: false },
+    '2026-05-17': { s1: 8, s2: 3, manual: false },
+    /* Weekend May 23-24 */
+    '2026-05-23': { s1: 4, s2: 9, manual: false },
+    '2026-05-24': { s1: 9, s2: 4, manual: false },
+    /* Weekend May 30-31 (+ Corpus Christi June 4 = feriadão starts here) */
+    '2026-05-30': { s1: 5, s2: 6, manual: false },
+    '2026-05-31': { s1: 6, s2: 5, manual: false }
+  };
+
+  /* Set some base férias/blocks for realism */
+  store.blocks = [
+    { id: 1, userId: 1, startDate: '2026-01-10', endDate: '2026-01-30', type: 'F', reason: 'Férias programadas' },
+    { id: 2, userId: 6, startDate: '2026-03-05', endDate: '2026-03-20', type: 'F', reason: 'Férias programadas' },
+    { id: 3, userId: 3, startDate: '2026-06-15', endDate: '2026-06-30', type: 'F', reason: 'Férias programadas' },
+    { id: 4, userId: 8, startDate: '2026-05-20', endDate: '2026-05-22', type: 'N', reason: 'Treinamento externo' }
+  ];
+  nextId = 10;
+
+  /* Save base assignments */
+  for (const [dateStr, a] of Object.entries(baseAssignments)) {
+    store.assignments[dateStr] = { ...a, manual: false, editedBy: null, editedAt: null };
+  }
+
+  /* Initialize feriadão rotation tracking */
+  store.meta.feriadao_s1_order_a = [];
+  store.meta.feriadao_s2_order_a = [];
+  store.meta.feriadao_s1_order_b = [];
+  store.meta.feriadao_s2_order_b = [];
+
+  recalculateUserCounts();
+
+  /* Generate June through December 2026 + full 2027 */
+  for (let m = 6; m <= 12; m++) generateMonthAssignments(2026, m, false);
+  for (let m = 1; m <= 12; m++) generateMonthAssignments(2027, m, false);
+
+  store.meta.lastModified = new Date().toISOString();
+  saveStore();
+}
+
+/* ============================================================
+   PERSISTENCE
+   ============================================================ */
+const STORAGE_KEY = 'escala_sobreaviso_data_v2';
+
+function saveStore() {
+  try {
+    const payload = {
+      users: store.users,
+      blocks: store.blocks,
+      assignments: store.assignments,
+      meta: store.meta
+    };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+  } catch (e) {
+    showToast('Erro ao salvar: ' + e.message, 'error');
+  }
+}
+
+function loadStore() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) {
+      const payload = JSON.parse(raw);
+      store.users = payload.users || store.users;
+      store.blocks = payload.blocks || [];
+      store.assignments = payload.assignments || {};
+      store.meta = payload.meta || {
+        feriadao_s1_order_a: [], feriadao_s2_order_a: [],
+        feriadao_s1_order_b: [], feriadao_s2_order_b: [],
+        lastModified: null
+      };
+      /* Ensure users have feriadao counts */
+      for (const u of store.users) {
+        u.feriadao_s1_count = u.feriadao_s1_count || 0;
+        u.feriadao_s2_count = u.feriadao_s2_count || 0;
+      }
+      return true;
+    }
+  } catch (e) {
+    showToast('Erro ao carregar dados salvos. Usando base limpa.', 'error');
+  }
+  return false;
+}
+
+/* ============================================================
+   CALENDAR RENDERING
+   ============================================================ */
+let currentYear, currentMonth;
+
+function renderCalendar() {
+  const { feriadoes } = detectFeriadoes(currentYear, currentMonth);
+  const feriadaoDays = new Set();
+  const feriadaoLabels = {};
+  for (const fd of feriadoes) {
+    for (const d of fd.days) {
+      feriadaoDays.add(d);
+      feriadaoLabels[d] = fd.label;
+    }
+  }
+
+  const totalDays = daysInMonth(currentYear, currentMonth);
+  const firstDow = getDayOfWeek(currentYear, currentMonth, 1);
+  const today = fmtDate(new Date().getFullYear(), new Date().getMonth() + 1, new Date().getDate());
+
+  /* Update header */
+  const monthNames = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+    'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+  document.getElementById('monthLabel').textContent = `${monthNames[currentMonth - 1]} ${currentYear}`;
+  document.getElementById('monthSelect').value = currentMonth;
+  document.getElementById('yearInput').value = currentYear;
+
+  /* Calendar grid */
+  const grid = document.getElementById('calendarGrid');
+  grid.innerHTML = '';
+
+  /* Day headers */
+  const dayNames = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+  for (const dn of dayNames) {
+    const hdr = document.createElement('div');
+    hdr.className = 'calendar-header';
+    hdr.textContent = dn;
+    grid.appendChild(hdr);
+  }
+
+  /* Previous month filler */
+  const prevMonthDays = daysInMonth(currentMonth === 1 ? currentYear - 1 : currentYear, currentMonth === 1 ? 12 : currentMonth - 1);
+  for (let i = firstDow - 1; i >= 0; i--) {
+    const d = prevMonthDays - i;
+    const pm = currentMonth === 1 ? 12 : currentMonth - 1;
+    const py = currentMonth === 1 ? currentYear - 1 : currentYear;
+    const cell = createCalendarCell(py, pm, d, true, feriadaoDays, feriadaoLabels, today);
+    grid.appendChild(cell);
+  }
+
+  /* Current month */
+  for (let d = 1; d <= totalDays; d++) {
+    const cell = createCalendarCell(currentYear, currentMonth, d, false, feriadaoDays, feriadaoLabels, today);
+    grid.appendChild(cell);
+  }
+
+  /* Next month filler */
+  const totalCells = firstDow + totalDays;
+  const remaining = totalCells % 7 === 0 ? 0 : 7 - (totalCells % 7);
+  const nm = currentMonth === 12 ? 1 : currentMonth + 1;
+  const ny = currentMonth === 12 ? currentYear + 1 : currentYear;
+  for (let d = 1; d <= remaining; d++) {
+    const cell = createCalendarCell(ny, nm, d, true, feriadaoDays, feriadaoLabels, today);
+    grid.appendChild(cell);
+  }
+
+  /* Update sidebar */
+  renderSidebarContent();
+}
+
+function createCalendarCell(y, m, d, otherMonth, feriadaoDays, feriadaoLabels, today) {
+  const cell = document.createElement('div');
+  cell.className = 'calendar-cell';
+
+  const dateStr = fmtDate(y, m, d);
+
+  if (otherMonth) cell.classList.add('other-month');
+  if (dateStr === today) cell.classList.add('today');
+
+  const dow = getDayOfWeek(y, m, d);
+  const holiday = isHoliday(dateStr);
+  const isFeriadaoDay = feriadaoDays.has(dateStr);
+
+  if (isWeekend(y, m, d) && !isFeriadaoDay && !holiday) cell.classList.add('weekend');
+  if (holiday && !isFeriadaoDay) cell.classList.add('feriado');
+  if (isFeriadaoDay) cell.classList.add('feriadao');
+
+  /* Day number */
+  const numDiv = document.createElement('div');
+  numDiv.className = 'day-num';
+  numDiv.textContent = d;
+  cell.appendChild(numDiv);
+
+  /* Holiday/feriadão label */
+  if (holiday && !isFeriadaoDay) {
+    const hnDiv = document.createElement('div');
+    hnDiv.className = 'holiday-name';
+    hnDiv.textContent = getHolidayName(dateStr);
+    cell.appendChild(hnDiv);
+  }
+  if (isFeriadaoDay && feriadaoLabels[dateStr]) {
+    const fnDiv = document.createElement('div');
+    fnDiv.className = 'feriadao-name';
+    fnDiv.textContent = '🔷 ' + feriadaoLabels[dateStr];
+    cell.appendChild(fnDiv);
+  }
+
+  /* Assignment tags */
+  const assignment = store.assignments[dateStr];
+  if (assignment && (assignment.s1 || assignment.s2)) {
+    if (assignment.s1) {
+      const s1u = getUser(assignment.s1);
+      const s1Div = document.createElement('div');
+      s1Div.className = 's1-tag';
+      s1Div.textContent = 'S1: ' + (s1u ? s1u.name : '?');
+      cell.appendChild(s1Div);
+    }
+    if (assignment.s2) {
+      const s2u = getUser(assignment.s2);
+      const s2Div = document.createElement('div');
+      s2Div.className = 's2-tag';
+      s2Div.textContent = 'S2: ' + (s2u ? s2u.name : '?');
+      cell.appendChild(s2Div);
+    }
+    if (assignment.manual) {
+      const mDiv = document.createElement('div');
+      mDiv.className = 'manual-indicator';
+      mDiv.textContent = '✎';
+      mDiv.title = 'Editado manualmente';
+      cell.appendChild(mDiv);
+    }
+  }
+
+  /* Block tags */
+  for (const blk of store.blocks) {
+    if (dateStr >= blk.startDate && dateStr <= blk.endDate) {
+      const bu = getUser(blk.userId);
+      if (bu) {
+        const tagDiv = document.createElement('div');
+        tagDiv.className = blk.type === 'F' ? 'ferias-tag' : 'bloqueio-tag';
+        tagDiv.textContent = (blk.type === 'F' ? 'F: ' : 'N: ') + bu.name;
+        cell.appendChild(tagDiv);
+      }
+    }
+  }
+
+  /* Click to edit */
+  cell.addEventListener('click', () => showEditDayModal(dateStr));
+
+  return cell;
+}
+
+/* ============================================================
+   SIDEBAR RENDERING
+   ============================================================ */
+function renderSidebarContent() {
+  renderUserLists();
+  renderBlockList();
+  renderReports();
+  renderMonthSummary();
+}
+
+function renderUserLists() {
+  const listA = document.getElementById('userListA');
+  const listB = document.getElementById('userListB');
+
+  const counts = calculateUserCounts();
+
+  const renderGroup = (users, container) => {
+    container.innerHTML = '';
+    for (const u of users) {
+      const c = counts[u.id] || { plantoes: 0, s1: 0, s2: 0 };
+      const li = document.createElement('li');
+      li.className = 'user-item' + (u.active ? '' : ' inactive');
+      li.innerHTML = `
+        <span class="badge ${u.group.toLowerCase()}">${u.group}</span>
+        <span>${u.name}</span>
+        <span class="stats">PL:${c.plantoes} S1:${c.s1} S2:${c.s2}</span>
+      `;
+      li.addEventListener('click', () => showEditUserModal(u.id));
+      container.appendChild(li);
+    }
+  };
+
+  renderGroup(store.users.filter(u => u.group === 'A'), listA);
+  renderGroup(store.users.filter(u => u.group === 'B'), listB);
+}
+
+function renderBlockList() {
+  const container = document.getElementById('blockList');
+  container.innerHTML = '';
+
+  const sortedBlocks = [...store.blocks].sort((a, b) => a.startDate.localeCompare(b.startDate));
+
+  for (const blk of sortedBlocks) {
+    const u = getUser(blk.userId);
+    const li = document.createElement('li');
+    li.className = 'block-item';
+    const typeLabel = blk.type === 'F' ? 'FÉRIAS' : 'BLOQ';
+    li.innerHTML = `
+      <span style="font-weight:600;color:${blk.type==='F'?'var(--ferias)':'var(--bloqueio)'}">${typeLabel}</span>
+      <span>${u ? u.name : '?'}</span>
+      <span style="font-size:.7rem;color:var(--text2)">${blk.startDate} → ${blk.endDate}</span>
+      <span style="font-size:.68rem">${blk.reason || ''}</span>
+      <button class="remove-block" onclick="event.stopPropagation();removeBlock(${blk.id})" title="Remover">×</button>
+    `;
+    li.addEventListener('click', () => showEditBlockModal(blk.id));
+    container.appendChild(li);
+  }
+
+  if (sortedBlocks.length === 0) {
+    container.innerHTML = '<li style="font-size:.75rem;color:var(--text3);padding:8px">Nenhum bloqueio cadastrado.</li>';
+  }
+}
+
+function renderReports() {
+  const tbody = document.querySelector('#reportTable tbody');
+  if (!tbody) return;
+  tbody.innerHTML = '';
+
+  const counts = calculateUserCounts();
+  const allPlantoes = Object.values(counts).map(c => c.plantoes);
+  const allS1 = Object.values(counts).map(c => c.s1);
+  const allS2 = Object.values(counts).map(c => c.s2);
+  const maxPL = Math.max(1, ...allPlantoes);
+  const maxS1 = Math.max(1, ...allS1);
+  const maxS2 = Math.max(1, ...allS2);
+
+  for (const u of store.users) {
+    const c = counts[u.id] || { plantoes: 0, s1: 0, s2: 0, feriadao_s1: 0, feriadao_s2: 0 };
+    const blockDays = store.blocks
+      .filter(b => b.userId === u.id)
+      .reduce((sum, b) => sum + dateDiff(b.startDate, b.endDate) + 1, 0);
+
+    const tr = document.createElement('tr');
+    const warnPL = c.plantoes >= maxPL * 0.9;
+    const warnS1 = c.s1 >= maxS1 * 0.9;
+    const warnS2 = c.s2 >= maxS2 * 0.9;
+
+    tr.innerHTML = `
+      <td style="text-align:left;font-weight:600">${u.name}</td>
+      <td><span class="badge ${u.group.toLowerCase()}">${u.group}</span></td>
+      <td class="${c.plantoes >= maxPL ? 'warn' : ''}">${c.plantoes}</td>
+      <td class="${warnS1 ? 'warn' : ''}">${c.s1}</td>
+      <td class="${warnS2 ? 'warn' : ''}">${c.s2}</td>
+      <td>${blockDays > 0 ? blockDays : '-'}</td>
+      <td>${blockDays > 0 ? blockDays : '-'}</td>
+      <td>${c.feriadao_s1 || 0}</td>
+      <td>${c.feriadao_s2 || 0}</td>
+    `;
+    tbody.appendChild(tr);
+  }
+
+  /* Alerts */
+  const alertsDiv = document.getElementById('alertsList');
+  if (alertsDiv) {
+    const alerts = [];
+    const stdPL = stdDev(allPlantoes);
+    const meanPL = allPlantoes.reduce((a, b) => a + b, 0) / allPlantoes.length;
+
+    if (stdPL > 2) {
+      alerts.push('⚠️ Desequilíbrio significativo na distribuição de plantões (desvio: ' + stdPL.toFixed(1) + ').');
+    }
+
+    /* Check for users with many consecutive assignments */
+    const sortedDates = Object.keys(store.assignments).sort();
+    for (const u of store.users) {
+      let consec = 0;
+      for (const ds of sortedDates) {
+        const a = store.assignments[ds];
+        if (a && (a.s1 === u.id || a.s2 === u.id)) {
+          consec++;
+          if (consec >= 6) {
+            alerts.push('⚠️ ' + u.name + ' tem ' + consec + ' dias consecutivos com escala.');
+            break;
+          }
+        } else {
+          consec = 0;
+        }
+      }
+    }
+
+    alertsDiv.innerHTML = alerts.length > 0
+      ? alerts.map(a => '<div style="margin:4px 0;padding:6px;background:var(--bloqueio-bg);border-radius:4px">' + a + '</div>').join('')
+      : '<div style="color:var(--text3)">✅ Nenhum alerta crítico.</div>';
+  }
+}
+
+function renderMonthSummary() {
+  const container = document.getElementById('monthSummary');
+  if (!container) return;
+
+  const monthPrefix = fmtDate(currentYear, currentMonth, 1).substring(0, 7);
+  let totalCovered = 0, totalWeekends = 0, totalHolidays = 0, totalFeriadao = 0;
+
+  const blocks = getCoverageBlocks(currentYear, currentMonth);
+  for (const b of blocks) {
+    totalCovered += b.days.length;
+    if (b.type === 'weekend') totalWeekends += b.days.length;
+    if (b.type === 'holiday') totalHolidays += b.days.length;
+    if (b.type === 'feriadao') totalFeriadao += b.days.length;
+  }
+
+  /* Build set of all days needing coverage */
+  const coverageDays = new Set();
+  for (const b of blocks) {
+    for (const d of b.days) coverageDays.add(d);
+  }
+
+  let assigned = 0;
+  const uncoveredDays = [];
+  for (const ds of coverageDays) {
+    const a = store.assignments[ds];
+    if (a && (a.s1 || a.s2)) {
+      assigned++;
+    } else {
+      uncoveredDays.push(ds);
+    }
+  }
+
+  let html = `
+    <div>📅 Dias a cobrir: <b>${totalCovered}</b></div>
+    <div>✓ Dias com escala: <b>${assigned}</b></div>
+    <div>🔷 Feriadões: <b>${totalFeriadao > 0 ? Math.round(totalFeriadao / 3) : 0} blocos</b></div>
+    <div>📌 Fins de semana: <b>${Math.round(totalWeekends / 2)}</b></div>
+    <div>🏖️ Feriados isolados: <b>${totalHolidays}</b></div>
+  `;
+
+  if (uncoveredDays.length > 0) {
+    html += `
+      <div style="margin-top:8px;padding:6px;background:var(--ferias-bg);border-radius:4px;font-size:.7rem;color:var(--ferias)">
+        ⚠️ <b>${uncoveredDays.length} dia(s) sem escala:</b><br>
+        ${uncoveredDays.slice(0, 6).join(', ')}${uncoveredDays.length > 6 ? '...' : ''}
+      </div>`;
+  }
+
+  if (assigned === totalCovered && totalCovered > 0) {
+    html += `
+      <div style="margin-top:4px;font-size:.7rem;color:var(--s2-text)">✅ Cobertura completa do mês.</div>`;
+  }
+
+  container.innerHTML = html;
+}
+
+function stdDev(arr) {
+  if (arr.length === 0) return 0;
+  const mean = arr.reduce((a, b) => a + b, 0) / arr.length;
+  const variance = arr.reduce((sum, v) => sum + (v - mean) ** 2, 0) / arr.length;
+  return Math.sqrt(variance);
+}
+
+/* ============================================================
+   MODALS
+   ============================================================ */
+function showModal(html) {
+  const overlay = document.getElementById('modalOverlay');
+  overlay.innerHTML = `<div class="modal">${html}</div>`;
+  overlay.style.display = 'flex';
+  overlay.addEventListener('click', function(e) {
+    if (e.target === overlay) closeModal();
+  });
+}
+
+function closeModal() {
+  document.getElementById('modalOverlay').style.display = 'none';
+  document.getElementById('modalOverlay').innerHTML = '';
+}
+
+function getDayTypeLabel(dateStr) {
+  const pd = parseDate(dateStr);
+  const holiday = isHoliday(dateStr);
+  const { feriadoes } = detectFeriadoes(currentYear, currentMonth);
+  const feriadaoSet = new Set(feriadoes.flatMap(fd => fd.days));
+  if (feriadaoSet.has(dateStr)) return '🔷 Feriadão';
+  if (holiday) return '🏖️ Feriado';
+  if (isWeekend(pd.y, pd.m, pd.d)) return '📅 Final de Semana';
+  return 'Dia comum';
+}
+
+function getNearbyBlockWarnings(dateStr, userIds) {
+  /* Check if any of these users have blocks within 3 days of dateStr */
+  const warnings = [];
+  for (const uid of userIds) {
+    if (!uid) continue;
+    for (const blk of store.blocks) {
+      if (blk.userId !== uid) continue;
+      const gapStart = dateDiff(dateStr, blk.startDate);
+      const gapEnd = dateDiff(dateStr, blk.endDate);
+      /* Block starts soon */
+      if (gapStart >= 0 && gapStart <= 3) {
+        const u = getUser(uid);
+        warnings.push(`⚠️ ${u.name}: ${blk.type === 'F' ? 'Férias' : 'Indisponibilidade'} começa em ${gapStart} dia(s) (${blk.startDate})`);
+      }
+      /* Block just ended */
+      if (gapEnd <= 0 && gapEnd >= -3) {
+        const u = getUser(uid);
+        warnings.push(`⚠️ ${u.name}: ${blk.type === 'F' ? 'Férias' : 'Indisponibilidade'} terminou há ${Math.abs(gapEnd)} dia(s) (${blk.endDate})`);
+      }
+    }
+  }
+  return warnings;
+}
+
+function showEditDayModal(dateStr) {
+  const assignment = store.assignments[dateStr] || { s1: null, s2: null, manual: false };
+  const holiday = isHoliday(dateStr);
+  const holidayName = getHolidayName(dateStr);
+  const pd = parseDate(dateStr);
+  const dow = getDayOfWeek(pd.y, pd.m, pd.d);
+  const dayNames = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
+  const dayTypeLabel = getDayTypeLabel(dateStr);
+
+  const { feriadoes } = detectFeriadoes(currentYear, currentMonth);
+  const feriadaoSet = new Set(feriadoes.flatMap(fd => fd.days));
+  const isFeriadaoDay = feriadaoSet.has(dateStr);
+
+  const allActiveUsers = store.users.filter(u => u.active).sort((a, b) => a.name.localeCompare(b.name));
+
+  /* Check for nearby block warnings */
+  const currentUsers = [assignment.s1, assignment.s2].filter(Boolean);
+  const blockWarnings = getNearbyBlockWarnings(dateStr, currentUsers);
+
+  let html = `
+    <h2>${dateStr} — ${dayNames[dow]}</h2>
+    <div style="font-size:.85rem;margin-bottom:12px;color:var(--text2)">
+      ${dayTypeLabel}
+      ${holiday ? ' — ' + holidayName : ''}
+      ${isFeriadaoDay ? ' — Bloco especial' : ''}
+    </div>
+    <label>S1 (Trabalha)</label>
+    <div style="display:flex;gap:6px">
+      <select id="editS1" style="flex:1">
+        <option value="">— Nenhum —</option>
+        ${allActiveUsers.map(u => `<option value="${u.id}" ${assignment.s1 === u.id ? 'selected' : ''}>${u.name} (Grupo ${u.group})</option>`).join('')}
+      </select>
+    </div>
+    <label>S2 (Sobreaviso)</label>
+    <div style="display:flex;gap:6px">
+      <select id="editS2" style="flex:1">
+        <option value="">— Nenhum —</option>
+        ${allActiveUsers.map(u => `<option value="${u.id}" ${assignment.s2 === u.id ? 'selected' : ''}>${u.name} (Grupo ${u.group})</option>`).join('')}
+      </select>
+      <button onclick="swapS1S2()" title="Trocar S1 ↔ S2" style="padding:4px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);cursor:pointer;font-size:.8rem">⇄</button>
+    </div>
+    ${blockWarnings.length > 0 ? `
+      <div style="margin-top:10px;padding:8px;background:var(--bloqueio-bg);border-radius:4px;font-size:.72rem">
+        ${blockWarnings.join('<br>')}
+      </div>` : ''}
+    <div style="margin-top:8px;font-size:.72rem;color:var(--ferias)">
+      ⚠️ Lembre-se: a dupla deve ser sempre Grupo A + Grupo B.
+    </div>
+    <div style="margin-top:8px">
+      <input type="checkbox" id="editManual" ${assignment.manual ? 'checked' : ''}>
+      <label style="display:inline;font-weight:400" for="editManual">Marcar como edição manual (protegida contra regeneração)</label>
+    </div>
+    <div class="btn-row">
+      <button onclick="closeModal()">Cancelar</button>
+      <button onclick="clearDay('${dateStr}')" class="danger">Limpar Dia</button>
+      <button onclick="saveDayEdit('${dateStr}')" class="save">Salvar</button>
+    </div>
+  `;
+
+  showModal(html);
+}
+
+function swapS1S2() {
+  const s1Sel = document.getElementById('editS1');
+  const s2Sel = document.getElementById('editS2');
+  const tmp = s1Sel.value;
+  s1Sel.value = s2Sel.value;
+  s2Sel.value = tmp;
+  showToast('S1 e S2 trocados. Verifique os grupos antes de salvar.', 'info');
+}
+
+function saveDayEdit(dateStr) {
+  const s1 = parseInt(document.getElementById('editS1').value) || null;
+  const s2 = parseInt(document.getElementById('editS2').value) || null;
+  const manual = document.getElementById('editManual').checked;
+
+  /* Validate group pairing */
+  if (s1 && s2) {
+    const u1 = getUser(s1);
+    const u2 = getUser(s2);
+    if (u1 && u2 && u1.group === u2.group) {
+      showToast('❌ Dupla inválida! S1 e S2 devem ser de grupos diferentes (A + B).', 'error');
+      return;
+    }
+  }
+
+  /* Check if users are blocked on this date */
+  if (s1 && isUserBlocked(s1, dateStr)) {
+    showToast('⚠️ ' + getUser(s1).name + ' está bloqueado nesta data!', 'error');
+    return;
+  }
+  if (s2 && isUserBlocked(s2, dateStr)) {
+    showToast('⚠️ ' + getUser(s2).name + ' está bloqueado nesta data!', 'error');
+    return;
+  }
+
+  /* Check for vacation-adjacent assignments */
+  const userIds = [s1, s2].filter(Boolean);
+  const nearbyWarnings = getNearbyBlockWarnings(dateStr, userIds);
+  const feriasWarnings = nearbyWarnings.filter(w => w.includes('Férias'));
+
+  if (feriasWarnings.length > 0) {
+    /* Show confirmation dialog */
+    const warnMsg = '🚨 ATENÇÃO — Atribuição próxima a férias:\n\n'
+      + feriasWarnings.join('\n')
+      + '\n\nDeseja continuar mesmo assim?';
+    if (!confirm(warnMsg)) return;
+  }
+
+  /* Validate feriadão pair consistency */
+  const pdd = parseDate(dateStr);
+  const { feriadoes } = detectFeriadoes(pdd.y, pdd.m);
+  for (const fd of feriadoes) {
+    if (fd.days.includes(dateStr)) {
+      /* Check that all other days in this feriadão that have assignments use the same pair */
+      for (const d of fd.days) {
+        if (d === dateStr) continue;
+        const existing = store.assignments[d];
+        if (existing && !existing.manual) {
+          /* Non-manual assignment — will be regenerated, so no conflict */
+          continue;
+        }
+        if (existing && existing.manual) {
+          /* Manual assignment on another day of same feriadão */
+          const pair1 = new Set([s1, s2].filter(Boolean));
+          const pair2 = new Set([existing.s1, existing.s2].filter(Boolean));
+          const overlap = [...pair1].filter(id => pair2.has(id));
+          if (pair1.size === 2 && pair2.size === 2 && overlap.length < 2) {
+            showToast('⚠️ Este feriadão tem dias com pares diferentes atribuídos manualmente. Verifique a consistência.', 'error');
+            return;
+          }
+        }
+      }
+      break;
+    }
+  }
+
+  store.assignments[dateStr] = {
+    s1, s2, manual,
+    editedBy: 'Gerente',
+    editedAt: new Date().toISOString()
+  };
+
+  recalculateUserCounts();
+  saveStore();
+  closeModal();
+  renderCalendar();
+  showToast('Dia ' + dateStr + ' atualizado.', 'success');
+}
+
+function clearDay(dateStr) {
+  if (confirm('Remover escala do dia ' + dateStr + '?')) {
+    delete store.assignments[dateStr];
+    recalculateUserCounts();
+    saveStore();
+    closeModal();
+    renderCalendar();
+    showToast('Dia ' + dateStr + ' limpo.', 'info');
+  }
+}
+
+function showAddBlockModal() {
+  const users = store.users.filter(u => u.active);
+  let html = `
+    <h2>Adicionar Bloqueio</h2>
+    <label>Usuário</label>
+    <select id="blockUser">
+      ${users.map(u => `<option value="${u.id}">${u.name} (${u.group})</option>`).join('')}
+    </select>
+    <label>Tipo</label>
+    <select id="blockType">
+      <option value="F">Férias (F)</option>
+      <option value="N">Indisponível (N)</option>
+    </select>
+    <label>Data Início</label>
+    <input type="date" id="blockStart" value="${currentYear}-${String(currentMonth).padStart(2,'0')}-01">
+    <label>Data Fim</label>
+    <input type="date" id="blockEnd" value="${currentYear}-${String(currentMonth).padStart(2,'0')}-01">
+    <label>Motivo</label>
+    <input type="text" id="blockReason" placeholder="Ex: Férias programadas, treinamento...">
+    <div class="btn-row">
+      <button onclick="closeModal()">Cancelar</button>
+      <button onclick="saveBlock()" class="save">Salvar</button>
+    </div>
+  `;
+  showModal(html);
+}
+
+function saveBlock() {
+  const userId = parseInt(document.getElementById('blockUser').value);
+  const type = document.getElementById('blockType').value;
+  const startDate = document.getElementById('blockStart').value;
+  const endDate = document.getElementById('blockEnd').value;
+  const reason = document.getElementById('blockReason').value;
+
+  if (!startDate || !endDate) {
+    showToast('Preencha as datas.', 'error');
+    return;
+  }
+  if (startDate > endDate) {
+    showToast('Data de início não pode ser maior que data de fim.', 'error');
+    return;
+  }
+
+  const id = nextId++;
+  store.blocks.push({ id, userId, startDate, endDate, type, reason });
+
+  /* Regenerate affected months */
+  regenerateAffectedMonths(startDate, endDate);
+
+  recalculateUserCounts();
+  saveStore();
+  closeModal();
+  renderCalendar();
+  showToast('Bloqueio adicionado. Escala regenerada no período.', 'success');
+}
+
+function showEditBlockModal(blockId) {
+  const blk = store.blocks.find(b => b.id === blockId);
+  if (!blk) return;
+
+  const users = store.users.filter(u => u.active);
+  let html = `
+    <h2>Editar Bloqueio #${blk.id}</h2>
+    <label>Usuário</label>
+    <select id="blockUser">
+      ${users.map(u => `<option value="${u.id}" ${blk.userId === u.id ? 'selected' : ''}>${u.name} (${u.group})</option>`).join('')}
+    </select>
+    <label>Tipo</label>
+    <select id="blockType">
+      <option value="F" ${blk.type === 'F' ? 'selected' : ''}>Férias (F)</option>
+      <option value="N" ${blk.type === 'N' ? 'selected' : ''}>Indisponível (N)</option>
+    </select>
+    <label>Data Início</label>
+    <input type="date" id="blockStart" value="${blk.startDate}">
+    <label>Data Fim</label>
+    <input type="date" id="blockEnd" value="${blk.endDate}">
+    <label>Motivo</label>
+    <input type="text" id="blockReason" value="${blk.reason || ''}">
+    <div class="btn-row">
+      <button onclick="closeModal()">Cancelar</button>
+      <button onclick="deleteBlockConfirm(${blockId})" class="danger">Excluir</button>
+      <button onclick="updateBlock(${blockId})" class="save">Salvar</button>
+    </div>
+  `;
+  showModal(html);
+}
+
+function updateBlock(blockId) {
+  const blk = store.blocks.find(b => b.id === blockId);
+  if (!blk) return;
+
+  const oldStart = blk.startDate;
+  const oldEnd = blk.endDate;
+
+  blk.userId = parseInt(document.getElementById('blockUser').value);
+  blk.type = document.getElementById('blockType').value;
+  blk.startDate = document.getElementById('blockStart').value;
+  blk.endDate = document.getElementById('blockEnd').value;
+  blk.reason = document.getElementById('blockReason').value;
+
+  if (blk.startDate > blk.endDate) {
+    showToast('Data de início não pode ser maior que data de fim.', 'error');
+    return;
+  }
+
+  /* Regenerate affected months */
+  const minDate = blk.startDate < oldStart ? blk.startDate : oldStart;
+  const maxDate = blk.endDate > oldEnd ? blk.endDate : oldEnd;
+  regenerateAffectedMonths(minDate, maxDate);
+
+  recalculateUserCounts();
+  saveStore();
+  closeModal();
+  renderCalendar();
+  showToast('Bloqueio atualizado.', 'success');
+}
+
+function deleteBlockConfirm(blockId) {
+  if (confirm('Excluir este bloqueio permanentemente?')) {
+    removeBlock(blockId);
+    closeModal();
+  }
+}
+
+function removeBlock(blockId) {
+  const blk = store.blocks.find(b => b.id === blockId);
+  if (!blk) return;
+
+  store.blocks = store.blocks.filter(b => b.id !== blockId);
+
+  /* Regenerate affected months */
+  regenerateAffectedMonths(blk.startDate, blk.endDate);
+
+  recalculateUserCounts();
+  saveStore();
+  renderCalendar();
+  showToast('Bloqueio removido.', 'info');
+}
+
+function showEditUserModal(userId) {
+  const u = getUser(userId);
+  if (!u) return;
+
+  let html = `
+    <h2>Editar Usuário</h2>
+    <label>Nome</label>
+    <input type="text" id="editUserName" value="${u.name}">
+    <label>Grupo</label>
+    <select id="editUserGroup">
+      <option value="A" ${u.group === 'A' ? 'selected' : ''}>Grupo A</option>
+      <option value="B" ${u.group === 'B' ? 'selected' : ''}>Grupo B</option>
+    </select>
+    <label>Status</label>
+    <select id="editUserActive">
+      <option value="1" ${u.active ? 'selected' : ''}>Ativo</option>
+      <option value="0" ${!u.active ? 'selected' : ''}>Inativo</option>
+    </select>
+    <div class="btn-row">
+      <button onclick="closeModal()">Cancelar</button>
+      <button onclick="updateUser(${userId})" class="save">Salvar</button>
+    </div>
+  `;
+  showModal(html);
+}
+
+function updateUser(userId) {
+  const u = getUser(userId);
+  if (!u) return;
+
+  u.name = document.getElementById('editUserName').value;
+  u.group = document.getElementById('editUserGroup').value;
+  u.active = document.getElementById('editUserActive').value === '1';
+
+  recalculateUserCounts();
+  saveStore();
+  closeModal();
+  renderCalendar();
+  showToast('Usuário atualizado.', 'success');
+}
+
+function showAddUserModal() {
+  let html = `
+    <h2>Adicionar Usuário</h2>
+    <label>Nome</label>
+    <input type="text" id="newUserName" placeholder="Nome do usuário">
+    <label>Grupo</label>
+    <select id="newUserGroup">
+      <option value="A">Grupo A</option>
+      <option value="B">Grupo B</option>
+    </select>
+    <div class="btn-row">
+      <button onclick="closeModal()">Cancelar</button>
+      <button onclick="addUser()" class="save">Adicionar</button>
+    </div>
+  `;
+  showModal(html);
+}
+
+function addUser() {
+  const name = document.getElementById('newUserName').value.trim();
+  const group = document.getElementById('newUserGroup').value;
+
+  if (!name) {
+    showToast('Informe o nome do usuário.', 'error');
+    return;
+  }
+
+  const id = nextId++;
+  store.users.push({
+    id, name, group,
+    ferias_count: 0, plantoes_count: 0,
+    feriadao_s1_count: 0, feriadao_s2_count: 0,
+    active: true
+  });
+
+  saveStore();
+  closeModal();
+  renderCalendar();
+  showToast('Usuário ' + name + ' adicionado.', 'success');
+}
+
+/* ============================================================
+   REGENERATION HELPERS
+   ============================================================ */
+function regenerateAffectedMonths(startDate, endDate) {
+  const start = parseDate(startDate);
+  const end = parseDate(endDate);
+
+  /* Generate all months from start to end, plus buffer months */
+  const months = new Set();
+  const startKey = fmtDate(start.y, start.m, 1).substring(0, 7);
+  const endKey = fmtDate(end.y, end.m, 1).substring(0, 7);
+
+  /* Add all months in range */
+  let cy = start.y, cm = start.m;
+  while (true) {
+    const key = fmtDate(cy, cm, 1).substring(0, 7);
+    months.add(key);
+    if (key === endKey) break;
+    cm++;
+    if (cm > 12) { cm = 1; cy++; }
+  }
+
+  /* Also regenerate previous month (for context) and next month */
+  const prevM = start.m === 1 ? 12 : start.m - 1;
+  const prevY = start.m === 1 ? start.y - 1 : start.y;
+  months.add(fmtDate(prevY, prevM, 1).substring(0, 7));
+
+  const nextM = end.m === 12 ? 1 : end.m + 1;
+  const nextY = end.m === 12 ? end.y + 1 : end.y;
+  months.add(fmtDate(nextY, nextM, 1).substring(0, 7));
+
+  for (const key of months) {
+    const [y, m] = key.split('-').map(Number);
+    generateMonthAssignments(y, m, true);
+  }
+}
+
+function regenerateMonth() {
+  if (confirm('Regenerar a escala de ' + document.getElementById('monthLabel').textContent + '?\n\nEscala atual será recalculada. Edições manuais serão preservadas.')) {
+    generateMonthAssignments(currentYear, currentMonth, true);
+    renderCalendar();
+    showToast('Escala de ' + document.getElementById('monthLabel').textContent + ' regenerada.', 'success');
+  }
+}
+
+/* ============================================================
+   EXPORT / IMPORT
+   ============================================================ */
+function exportJSON() {
+  const payload = {
+    users: store.users,
+    blocks: store.blocks,
+    assignments: store.assignments,
+    meta: store.meta,
+    exportedAt: new Date().toISOString()
+  };
+
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `escala_backup_${new Date().toISOString().slice(0, 10)}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('Backup exportado.', 'success');
+}
+
+function importJSON() {
+  const input = document.getElementById('importFileInput');
+  input.onchange = function() {
+    const file = input.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      try {
+        const payload = JSON.parse(e.target.result);
+
+        if (!payload.users || !payload.assignments) {
+          throw new Error('Formato inválido');
+        }
+
+        if (confirm('Restaurar backup?\n\nIsso substituirá TODOS os dados atuais. Esta ação não pode ser desfeita.')) {
+          store.users = payload.users;
+          store.blocks = payload.blocks || [];
+          store.assignments = payload.assignments;
+          store.meta = payload.meta || {
+            feriadao_s1_order_a: [], feriadao_s2_order_a: [],
+            feriadao_s1_order_b: [], feriadao_s2_order_b: []
+          };
+          saveStore();
+          renderCalendar();
+          showToast('Backup restaurado com sucesso!', 'success');
+        }
+      } catch (err) {
+        showToast('Arquivo inválido: ' + err.message, 'error');
+      }
+    };
+    reader.readAsText(file);
+    input.value = '';
+  };
+  input.click();
+}
+
+function exportCSV() {
+  const monthPrefix = fmtDate(currentYear, currentMonth, 1).substring(0, 7);
+  let csv = 'Data,Dia da Semana,Tipo,S1,S2,Manual,Feriado\n';
+
+  const dayNames = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+  const { feriadoes } = detectFeriadoes(currentYear, currentMonth);
+  const feriadaoDays = new Set(feriadoes.flatMap(fd => fd.days));
+
+  const totalDays = daysInMonth(currentYear, currentMonth);
+  for (let d = 1; d <= totalDays; d++) {
+    const dateStr = fmtDate(currentYear, currentMonth, d);
+    const dow = getDayOfWeek(currentYear, currentMonth, d);
+    const a = store.assignments[dateStr] || {};
+
+    let tipo = 'Comum';
+    if (feriadaoDays.has(dateStr)) tipo = 'Feriadão';
+    else if (isHoliday(dateStr)) tipo = 'Feriado';
+    else if (isWeekend(currentYear, currentMonth, d)) tipo = 'FDS';
+
+    const s1Name = a.s1 ? (getUser(a.s1)?.name || '?') : '';
+    const s2Name = a.s2 ? (getUser(a.s2)?.name || '?') : '';
+    const feriadoName = isHoliday(dateStr) ? getHolidayName(dateStr) : '';
+
+    csv += `${dateStr},${dayNames[dow]},${tipo},${s1Name},${s2Name},${a.manual ? 'Sim' : 'Não'},${feriadoName}\n`;
+  }
+
+  /* BOM for Excel UTF-8 */
+  const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `escala_${monthPrefix}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('CSV exportado.', 'success');
+}
+
+/* ============================================================
+   TOAST
+   ============================================================ */
+function showToast(msg, type = 'info') {
+  const container = document.getElementById('toastContainer');
+  const toast = document.createElement('div');
+  toast.className = `toast ${type}`;
+  toast.textContent = msg;
+  container.appendChild(toast);
+  setTimeout(() => { toast.remove(); }, 3000);
+}
+
+/* ============================================================
+   NAVIGATION & INIT
+   ============================================================ */
+function goToMonth(y, m) {
+  currentYear = y;
+  currentMonth = m;
+
+  /* Ensure the month is generated if it doesn't have assignments */
+  const monthPrefix = fmtDate(y, m, 1).substring(0, 7);
+  let hasAny = false;
+  for (const key of Object.keys(store.assignments)) {
+    if (key.startsWith(monthPrefix)) { hasAny = true; break; }
+  }
+
+  if (!hasAny) {
+    generateMonthAssignments(y, m, false);
+  }
+
+  renderCalendar();
+}
+
+function prevMonth() {
+  if (currentMonth === 1) { currentMonth = 12; currentYear--; }
+  else { currentMonth--; }
+  goToMonth(currentYear, currentMonth);
+}
+
+function nextMonth() {
+  if (currentMonth === 12) { currentMonth = 1; currentYear++; }
+  else { currentMonth++; }
+  goToMonth(currentYear, currentMonth);
+}
+
+function goToToday() {
+  const now = new Date();
+  goToMonth(now.getFullYear(), now.getMonth() + 1);
+}
+
+document.getElementById('monthSelect').addEventListener('change', function() {
+  currentMonth = parseInt(this.value);
+  goToMonth(currentYear, currentMonth);
+});
+
+document.getElementById('yearInput').addEventListener('change', function() {
+  const y = parseInt(this.value);
+  if (y >= 2024 && y <= 2030) {
+    currentYear = y;
+    goToMonth(currentYear, currentMonth);
+  }
+});
+
+/* Keyboard navigation */
+document.addEventListener('keydown', function(e) {
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.target.tagName === 'TEXTAREA') return;
+
+  if (e.key === 'ArrowLeft') prevMonth();
+  else if (e.key === 'ArrowRight') nextMonth();
+  else if (e.key === 'Escape') closeModal();
+});
+
+/* Tab switching */
+document.querySelectorAll('.sidebar-tabs button').forEach(btn => {
+  btn.addEventListener('click', function() {
+    document.querySelectorAll('.sidebar-tabs button').forEach(b => b.classList.remove('active'));
+    this.classList.add('active');
+
+    const tab = this.dataset.tab;
+    document.getElementById('tab-nav').style.display = tab === 'nav' ? 'block' : 'none';
+    document.getElementById('tab-users').style.display = tab === 'users' ? 'block' : 'none';
+    document.getElementById('tab-blocks').style.display = tab === 'blocks' ? 'block' : 'none';
+    document.getElementById('tab-reports').style.display = tab === 'reports' ? 'block' : 'none';
+
+    if (tab === 'reports') renderReports();
+    if (tab === 'blocks') renderBlockList();
+    if (tab === 'users') renderUserLists();
+  });
+});
+
+/* ============================================================
+   MONTH SELECT POPULATION
+   ============================================================ */
+function populateMonthSelect() {
+  const select = document.getElementById('monthSelect');
+  const names = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+    'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+  select.innerHTML = names.map((n, i) => `<option value="${i + 1}">${n}</option>`).join('');
+}
+
+/* ============================================================
+   BOOT
+   ============================================================ */
+function init() {
+  populateMonthSelect();
+
+  const loaded = loadStore();
+  if (!loaded) {
+    initializeBaseData();
+  }
+
+  const now = new Date();
+  currentYear = now.getFullYear();
+  currentMonth = now.getMonth() + 1;
+
+  goToMonth(currentYear, currentMonth);
+}
+
+init();
+</script>
+
+</body>
+</html>

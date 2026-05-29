@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Escala de Sobreaviso — Documentação Técnica</title>
+<style>
+  @page { size: A4; margin: 2cm 2.2cm; @bottom-center { content: "Página " counter(page); font-size: 9px; color: #94a3b8; } }
+  * { box-sizing: border-box; }
+  body { font-family: 'Segoe UI', system-ui, sans-serif; font-size: 10.5pt; line-height: 1.65; color: #1e293b; max-width: 100%; }
+  h1 { font-size: 22pt; color: #1d4ed8; border-bottom: 3px solid #1d4ed8; padding-bottom: 8px; margin-top: 0; }
+  h2 { font-size: 15pt; color: #0f172a; border-bottom: 1.5px solid #e2e8f0; padding-bottom: 4px; margin-top: 28px; page-break-after: avoid; }
+  h3 { font-size: 12pt; color: #334155; margin-top: 20px; page-break-after: avoid; }
+  h4 { font-size: 10.5pt; color: #475569; margin-top: 14px; }
+  p { margin: 8px 0; text-align: justify; }
+  code { background: #f1f5f9; padding: 2px 5px; border-radius: 3px; font-family: 'Cascadia Code', 'Consolas', monospace; font-size: 9pt; }
+  pre { background: #0f172a; color: #e2e8f0; padding: 14px 18px; border-radius: 6px; font-size: 8.5pt; line-height: 1.5; overflow-x: auto; white-space: pre-wrap; word-break: break-word; }
+  table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 9.5pt; }
+  th { background: #1d4ed8; color: #fff; padding: 8px 10px; text-align: left; font-weight: 600; }
+  td { padding: 7px 10px; border-bottom: 1px solid #e2e8f0; }
+  tr:nth-child(even) td { background: #f8fafc; }
+  .cover { text-align: center; padding: 80px 0 60px; page-break-after: always; }
+  .cover h1 { font-size: 28pt; border: none; margin-bottom: 8px; }
+  .cover .subtitle { font-size: 14pt; color: #64748b; margin-bottom: 40px; }
+  .cover .meta { font-size: 10pt; color: #94a3b8; margin-top: 60px; }
+  .badge { display: inline-block; padding: 3px 8px; border-radius: 4px; font-size: 8pt; font-weight: 600; }
+  .badge-blue { background: #dbeafe; color: #1e40af; }
+  .badge-green { background: #d1fae5; color: #065f46; }
+  .badge-purple { background: #ede9fe; color: #5b21b6; }
+  .badge-amber { background: #fef3c7; color: #92400e; }
+  .toc { page-break-after: always; }
+  .toc a { color: #1d4ed8; text-decoration: none; }
+  .toc ul { list-style: none; padding-left: 0; }
+  .toc li { padding: 3px 0; }
+  .toc .l2 { padding-left: 20px; font-size: 10pt; }
+  .rule-box { background: #f8fafc; border-left: 4px solid #1d4ed8; padding: 10px 14px; margin: 10px 0; font-size: 9.5pt; }
+  .rule-box strong { color: #1d4ed8; }
+  .file-tree { font-family: 'Cascadia Code', 'Consolas', monospace; font-size: 9pt; line-height: 1.6; color: #334155; }
+  .page-break { page-break-before: always; }
+</style>
+</head>
+<body>
+
+<!-- ======== CAPA ======== -->
+<div class="cover">
+  <h1>Escala de Sobreaviso Gerencial</h1>
+  <div class="subtitle">Documentação Técnica Completa — Arquitetura, Backend, Frontend e Regras de Negócio</div>
+  <div style="margin-top:30px">
+    <span class="badge badge-blue">Python 3.12</span>
+    <span class="badge badge-green">Django 6.0</span>
+    <span class="badge badge-purple">Bootstrap 5.3</span>
+    <span class="badge badge-amber">SQLite</span>
+  </div>
+  <div class="meta">
+    Curitiba, Paraná — Maio de 2026<br>
+    Versão 1.0.0
+  </div>
+</div>
+
+<!-- ======== ÍNDICE ======== -->
+<div class="toc">
+<h2>Índice</h2>
+<ul>
+  <li><a href="#s1">1. Visão Geral do Sistema</a></li>
+  <li><a href="#s2">2. Arquitetura do Projeto</a></li>
+  <li class="l2"><a href="#s2.1">2.1 Estrutura de Diretórios</a></li>
+  <li class="l2"><a href="#s2.2">2.2 Stack Tecnológico</a></li>
+  <li><a href="#s3">3. Backend — Camada de Dados (Models)</a></li>
+  <li class="l2"><a href="#s3.1">3.1 Diagrama de Entidades</a></li>
+  <li class="l2"><a href="#s3.2">3.2 Descrição dos Models</a></li>
+  <li><a href="#s4">4. Backend — Motor da Escala (Services)</a></li>
+  <li class="l2"><a href="#s4.1">4.1 Detecção de Feriados e Feriadões</a></li>
+  <li class="l2"><a href="#s4.2">4.2 Cálculo da Páscoa (Gauss)</a></li>
+  <li class="l2"><a href="#s4.3">4.3 Algoritmo de Pontuação (Scoring)</a></li>
+  <li class="l2"><a href="#s4.4">4.4 Geração e Redistribuição</a></li>
+  <li class="l2"><a href="#s4.5">4.5 Congelamento de Meses</a></li>
+  <li><a href="#s5">5. Backend — Views e URLs</a></li>
+  <li><a href="#s6">6. Frontend — Design System</a></li>
+  <li class="l2"><a href="#s6.1">6.1 Paleta de Cores</a></li>
+  <li class="l2"><a href="#s6.2">6.2 Componentes</a></li>
+  <li class="l2"><a href="#s6.3">6.3 Responsividade</a></li>
+  <li><a href="#s7">7. Regras de Negócio Implementadas</a></li>
+  <li><a href="#s8">8. Banco de Dados</a></li>
+  <li><a href="#s9">9. Instalação e Execução</a></li>
+  <li><a href="#s10">10. Testes Automatizados</a></li>
+</ul>
+</div>
+
+<!-- ======== 1. VISÃO GERAL ======== -->
+<div class="page-break"></div>
+<h2 id="s1">1. Visão Geral do Sistema</h2>
+
+<p>O <strong>Escala de Sobreaviso Gerencial</strong> é um sistema web corporativo desenvolvido para substituir o controle manual de escala de sobreaviso dos gerentes da Copel, anteriormente feito em planilha Excel.</p>
+
+<p>O sistema implementa um <strong>motor automático de geração de escala</strong> que distribui plantões de sobreaviso entre 9 gerentes divididos em dois grupos (A e B), respeitando regras complexas de negócio como:</p>
+
+<ul>
+  <li>Dupla obrigatória <strong>Grupo A + Grupo B</strong> (nunca dois do mesmo grupo)</li>
+  <li>Alternância entre funções <strong>S1</strong> (trabalha) e <strong>S2</strong> (sobreaviso)</li>
+  <li>Regra especial para <strong>feriadões</strong> (S1 cobre início, S2 cobre final)</li>
+  <li>Rotação separada para feriadões (quem foi S1 só repete após todos terem sido)</li>
+  <li>Respeito a <strong>férias, faltas, treinamentos e indisponibilidades</strong></li>
+  <li><strong>Congelamento de meses</strong> já consolidados</li>
+  <li>Balanceamento justo por pontuação multicritério</li>
+</ul>
+
+<p>A aplicação é <strong>single-binary</strong> (Django + SQLite), não requer instalação de bancos externos, e funciona em qualquer computador com Python 3.10+.</p>
+
+<!-- ======== 2. ARQUITETURA ======== -->
+<h2 id="s2">2. Arquitetura do Projeto</h2>
+
+<h3 id="s2.1">2.1 Estrutura de Diretórios</h3>
+
+<pre class="file-tree">
+escala_gerencial/
+├── manage.py                          # Django entry point
+├── requirements.txt                   # Django 6.0+
+├── README.md                          # Guia de instalação rápida
+├── DOCUMENTACAO.html                  # Este documento
+├── db.sqlite3                         # Banco de dados SQLite
+│
+├── core/                              # Configuração do projeto Django
+│   ├── __init__.py
+│   ├── settings.py                    # Django settings (pt-BR, SQLite, timezone SP)
+│   ├── urls.py                        # URL raiz: admin, login, escalas
+│   ├── wsgi.py
+│   └── asgi.py
+│
+├── escalas/                           # App principal (toda a lógica de negócio)
+│   ├── __init__.py
+│   ├── models.py                      # 11 modelos de dados
+│   ├── services.py                    # Motor da escala (~1100 linhas)
+│   ├── views.py                       # 30+ views (CRUD, calendário, relatórios)
+│   ├── forms.py                       # 6 formulários Django
+│   ├── admin.py                       # Django Admin configurado
+│   ├── urls.py                        # 25 rotas do app
+│   ├── tests.py                       # 19 testes unitários
+│   ├── management/
+│   │   └── commands/
+│   │       └── seed_initial_data.py   # População inicial (planilha → banco)
+│   └── migrations/                    # 2 migrations automáticas
+│
+├── templates/                         # 18 templates HTML
+│   ├── base.html                      # Layout base (sidebar escura + topbar)
+│   ├── registration/
+│   │   └── login.html                 # Tela de login corporativa
+│   └── escalas/
+│       ├── dashboard.html             # Dashboard com cards e alertas
+│       ├── calendario.html            # Calendário mensal (grid + mobile list)
+│       ├── calendario_anual.html      # Visão anual com mini calendários
+│       ├── _resumo_tabela.html        # Partial: tabela de resumo reutilizável
+│       ├── usuarios.html              # Lista de gerentes por grupo
+│       ├── usuario_form.html          # Edição de usuário
+│       ├── bloqueios.html             # Gestão de férias e bloqueios
+│       ├── bloqueio_form.html         # Formulário de bloqueio
+│       ├── feriados.html              # Lista de feriados
+│       ├── feriado_form.html          # Formulário de feriado
+│       ├── feriadoes.html             # Lista de feriadões
+│       ├── relatorios.html            # Relatórios com filtros
+│       ├── editar_dia.html            # Edição manual de dia da escala
+│       ├── trocar_escala.html         # Troca de plantão entre usuários
+│       ├── gerar_escala.html          # Geração/regeneração de escala
+│       └── exportar.html              # Exportação CSV/JSON
+│
+└── static/                            # Arquivos estáticos
+    ├── css/
+    │   └── estilo.css                 # Design System completo (~350 linhas)
+    └── js/
+        └── calendario.js              # Sidebar toggle, keyboard nav, alerts
+</pre>
+
+<h3 id="s2.2">2.2 Stack Tecnológico</h3>
+
+<table>
+  <tr><th>Camada</th><th>Tecnologia</th><th>Versão</th><th>Justificativa</th></tr>
+  <tr><td>Linguagem</td><td>Python</td><td>3.12</td><td>Padrão corporativo, extenso ecossistema</td></tr>
+  <tr><td>Framework Web</td><td>Django</td><td>6.0</td><td>ORM robusto, Admin automático, autenticação built-in</td></tr>
+  <tr><td>Banco de Dados</td><td>SQLite</td><td>3</td><td>Zero instalação, ideal para sistema local/departamental</td></tr>
+  <tr><td>Frontend CSS</td><td>Bootstrap 5</td><td>5.3</td><td>Grid responsivo, componentes acessíveis, ampla documentação</td></tr>
+  <tr><td>Ícones</td><td>Bootstrap Icons</td><td>1.11</td><td>1.800+ ícones SVG, consistência visual</td></tr>
+  <tr><td>Fontes</td><td>Inter (Google)</td><td>—</td><td>Fonte corporativa moderna, excelente legibilidade</td></tr>
+  <tr><td>PDF</td><td>WeasyPrint</td><td>—</td><td>Renderiza HTML/CSS para PDF</td></tr>
+  <tr><td>Testes</td><td>Django TestCase</td><td>—</td><td>19 testes unitários cobrindo toda a lógica de negócio</td></tr>
+</table>
+
+<!-- ======== 3. MODELS ======== -->
+<div class="page-break"></div>
+<h2 id="s3">3. Backend — Camada de Dados (Models)</h2>
+
+<h3 id="s3.1">3.1 Diagrama de Entidades</h3>
+
+<p>O sistema possui <strong>11 modelos</strong> organizados em 3 camadas:</p>
+
+<table>
+  <tr><th>Camada</th><th>Models</th><th>Responsabilidade</th></tr>
+  <tr><td><strong>Cadastro</strong></td><td>GrupoEscala, UsuarioEscala</td><td>Gerentes e seus grupos (A/B)</td></tr>
+  <tr><td><strong>Operação</strong></td><td>EscalaDia, EscalaBloco, BloqueioUsuario</td><td>Escala diária, blocos de cobertura, férias/indisponibilidades</td></tr>
+  <tr><td><strong>Calendário</strong></td><td>Feriado, Feriadao</td><td>Feriados fixos/móveis, feriadões automáticos/manuais</td></tr>
+  <tr><td><strong>Controle</strong></td><td>MesFechado, HistoricoAlteracao, AlertaSistema, ConfiguracaoSistema</td><td>Lock de meses, auditoria, alertas, configurações</td></tr>
+</table>
+
+<h3 id="s3.2">3.2 Descrição dos Models</h3>
+
+<h4>UsuarioEscala</h4>
+<pre>UsuarioEscala
+  ├── user              FK → User (Django auth, opcional)
+  ├── nome              CharField(120)
+  ├── grupo             FK → GrupoEscala
+  ├── ativo             BooleanField
+  ├── fer_inicial       PositiveIntegerField   # FER da planilha (total histórico de férias)
+  ├── pl_inicial        PositiveIntegerField   # PL da planilha (total histórico de plantões)
+  ├── total_s1          PositiveIntegerField   # Computado: vezes como S1
+  ├── total_s2          PositiveIntegerField   # Computado: vezes como S2
+  ├── feriadao_s1_count PositiveIntegerField   # Vezes como S1 em feriadão
+  ├── feriadao_s2_count PositiveIntegerField   # Vezes como S2 em feriadão
+  └── ultima_escala     DateField              # Data da última escala</pre>
+
+<h4>EscalaDia</h4>
+<pre>EscalaDia
+  ├── data              DateField (unique)
+  ├── s1                FK → UsuarioEscala      # Quem trabalha
+  ├── s2                FK → UsuarioEscala      # Quem fica de sobreaviso
+  ├── status            CharField: AUTOMATICA|MANUAL|CONFIRMADA|FECHADA|BLOQUEADA
+  ├── fim_de_semana     BooleanField
+  ├── feriado           BooleanField
+  ├── feriadao          BooleanField
+  ├── manual            BooleanField            # Editado manualmente?
+  ├── editado_por       FK → User
+  └── editado_em        DateTimeField</pre>
+
+<h4>BloqueioUsuario</h4>
+<pre>BloqueioUsuario
+  ├── usuario           FK → UsuarioEscala
+  ├── tipo              CharField: FERIAS|FALTA|TREINAMENTO|LICENCA|AFASTAMENTO|INDISPONIBILIDADE|OUTRO
+  ├── data_inicio       DateField
+  ├── data_fim          DateField
+  └── motivo            TextField</pre>
+
+<h4>MesFechado (controle de congelamento)</h4>
+<pre>MesFechado
+  ├── ano               IntegerField
+  ├── mes               IntegerField
+  ├── status            CharField: FECHADO|BLOQUEADO
+  ├── fechado_por       FK → User
+  └── fechado_em        DateTimeField</pre>
+
+<!-- ======== 4. SERVICES ======== -->
+<div class="page-break"></div>
+<h2 id="s4">4. Backend — Motor da Escala (Services)</h2>
+
+<p>O arquivo <code>escalas/services.py</code> contém <strong>~1.100 linhas</strong> de lógica pura de negócio, organizada em 30 funções. É o coração do sistema.</p>
+
+<h3 id="s4.1">4.1 Detecção de Feriados e Feriadões</h3>
+
+<p>O sistema mantém uma base de <strong>48 feriados</strong> (2025-2027) incluindo:</p>
+<ul>
+  <li><strong>9 feriados nacionais fixos</strong> (Confraternização Universal, Tiradentes, Independência, etc.)</li>
+  <li><strong>1 feriado estadual do Paraná</strong> (Emancipação Política — 19/dez)</li>
+  <li><strong>2 feriados municipais de Curitiba</strong> (Aniversário 29/mar, N.Sra. da Luz 8/set)</li>
+  <li><strong>4 feriados móveis</strong> calculados a partir da Páscoa (Carnaval, Sexta-feira Santa, Corpus Christi)</li>
+  <li><strong>Feriados manuais</strong> cadastrados via interface ou Django Admin</li>
+</ul>
+
+<h4>Detecção de Feriadões (pontes/emendas)</h4>
+<div class="rule-box">
+  <strong>Algoritmo:</strong> Para cada mês, o sistema marca fins de semana + feriados em um intervalo estendido (mês ± 10 dias). Em seguida, aplica a regra de <strong>emenda (ponte)</strong>:
+  <br>• Feriado na <strong>terça-feira</strong> → segunda-feira vira ponte
+  <br>• Feriado na <strong>quinta-feira</strong> → sexta-feira vira ponte
+  <br>Após isso, varreduras consecutivas agrupam os dias em blocos. Blocos com ≥ 2 dias e pelo menos 1 feriado são classificados como <strong>feriadão</strong>.
+</div>
+
+<h3 id="s4.2">4.2 Cálculo da Páscoa (Algoritmo de Gauss)</h3>
+
+<pre>def calcular_pascoa(ano):
+    """Algoritmo de Gauss para o calendário Gregoriano."""
+    a = ano % 19
+    b = ano // 100
+    c = ano % 100
+    # ... 11 passos matemáticos ...
+    return date(ano, mes, dia)</pre>
+
+<p>A partir da Páscoa derivam-se: <strong>Carnaval</strong> (−47 dias), <strong>Sexta-feira Santa</strong> (−2 dias), <strong>Corpus Christi</strong> (+60 dias).</p>
+
+<h3 id="s4.3">4.3 Algoritmo de Pontuação (Scoring)</h3>
+
+<p>O algoritmo de seleção da melhor dupla para cada bloco de cobertura utiliza <strong>pontuação multicritério</strong>. Para cada par possível (1 usuário do Grupo A × 1 do Grupo B), calcula-se a soma das pontuações individuais. <strong>Menor pontuação = melhor candidato.</strong></p>
+
+<table>
+  <tr><th>Fator</th><th>Peso</th><th>Direção</th><th>Descrição</th></tr>
+  <tr><td>Total de plantões (PL inicial + gerado)</td><td>× 100</td><td>↑ penaliza</td><td>Quem já fez muitos plantões perde prioridade</td></tr>
+  <tr><td>Férias históricas (FER inicial)</td><td>× 15</td><td>↓ beneficia</td><td>Quem já tirou férias recebe mais escala (já descansou)</td></tr>
+  <tr><td>Balanceamento S1/S2</td><td>× 50</td><td>↑ penaliza</td><td>Evita que a mesma pessoa fique sempre na mesma função</td></tr>
+  <tr><td>Fins de semana acumulados</td><td>× 80</td><td>↑ penaliza</td><td>Distribui fins de semana entre todos</td></tr>
+  <tr><td>Feriados acumulados</td><td>× 120</td><td>↑ penaliza</td><td>Evita concentração de feriados no mesmo usuário</td></tr>
+  <tr><td>Recência (&lt; 7 dias)</td><td>+ 500</td><td>↑ penaliza</td><td>Penalidade forte para escalas muito próximas</td></tr>
+  <tr><td>Recência (7-14 dias)</td><td>+ 100 a 250</td><td>↑ penaliza</td><td>Penalidade moderada</td></tr>
+  <tr><td>Nunca foi escalado</td><td>− 200</td><td>↓ beneficia</td><td>Bônus para quem ainda não entrou na rotação</td></tr>
+  <tr><td>Rotação feriadão S1/S2</td><td>× 300</td><td>↑ penaliza</td><td>Quem já foi S1/S2 em feriadão vai pro fim da fila</td></tr>
+  <tr><td>Retornou de férias (&lt; 3 dias)</td><td>− 150</td><td>↓ beneficia</td><td>Não sobrecarrega quem acabou de voltar</td></tr>
+  <tr><td>Prestes a entrar de férias (&lt; 5 dias)</td><td>+ 800</td><td>↑ penaliza</td><td>Evita escalar quem vai sair de férias</td></tr>
+  <tr><td>Bloqueio próximo (&lt; 3 dias)</td><td>+ 1000</td><td>↑ penaliza</td><td>Penalidade máxima para proximidade com qualquer bloqueio</td></tr>
+</table>
+
+<h3 id="s4.4">4.4 Geração e Redistribuição</h3>
+
+<p><strong>Funções principais:</strong></p>
+<ul>
+  <li><code>gerar_escala_mensal(ano, mes)</code> — Gera/regenera um mês específico, respeitando meses fechados</li>
+  <li><code>gerar_escala_anual(ano)</code> — Gera ano inteiro</li>
+  <li><code>gerar_escala_periodo(inicio, fim)</code> — Gera para um intervalo de datas, pulando meses fechados</li>
+  <li><code>regenerar_apos_data(data)</code> — Disparado ao cadastrar/remover bloqueios, regenera 6 meses à frente</li>
+</ul>
+
+<p><strong>Regra de Feriadão na atribuição diária:</strong></p>
+<div class="rule-box">
+  <strong>Bloco de 3 dias (ex: Sex-Sáb-Dom):</strong><br>
+  • Dias 1-2: S1 = usuário X, S2 = usuário Y (S1 trabalha, S2 sobreaviso)<br>
+  • Dia 3 (último): S1 = usuário Y, S2 = usuário X (inverte — S2 assume o trabalho)<br><br>
+  <strong>Bloco de 4+ dias (ex: Qui-Sex-Sáb-Dom com emenda):</strong><br>
+  • Dias 1-2: S1 = X, S2 = Y<br>
+  • Dias intermediários: alternância entre X e Y<br>
+  • Último dia: S1 = Y, S2 = X (S2 assume o trabalho no último dia)
+</div>
+
+<h3 id="s4.5">4.5 Congelamento de Meses</h3>
+
+<p>O sistema implementa <strong>5 níveis de status</strong> para cada dia de escala:</p>
+<table>
+  <tr><th>Status</th><th>Significado</th><th>Regeneração automática?</th></tr>
+  <tr><td>AUTOMATICA</td><td>Gerada pelo algoritmo</td><td>✅ Sim</td></tr>
+  <tr><td>MANUAL</td><td>Editada manualmente</td><td>❌ Preservada</td></tr>
+  <tr><td>CONFIRMADA</td><td>Confirmada por admin</td><td>❌ Preservada</td></tr>
+  <tr><td>FECHADA</td><td>Mês fechado</td><td>❌ Protegida</td></tr>
+  <tr><td>BLOQUEADA</td><td>Mês bloqueado (planilha original)</td><td>❌ Protegida (só admin)</td></tr>
+</table>
+
+<p>O modelo <code>MesFechado</code> registra quais meses estão congelados. Quando um mês está na tabela <code>MesFechado</code>, o algoritmo de geração <strong>recusa-se</strong> a modificá-lo, gerando um <code>AlertaSistema</code> de <code>MES_FECHADO</code>. As funções <code>fechar_mes()</code> e <code>reabrir_mes()</code> permitem o controle administrativo.</p>
+
+<!-- ======== 5. VIEWS E URLS ======== -->
+<div class="page-break"></div>
+<h2 id="s5">5. Backend — Views e URLs</h2>
+
+<p>O sistema expõe <strong>25 endpoints</strong> organizados em 30+ funções de view. Todas as views (exceto login) exigem autenticação (<code>@login_required</code>).</p>
+
+<table>
+  <tr><th>Rota</th><th>View</th><th>Descrição</th></tr>
+  <tr><td><code>/</code></td><td>dashboard</td><td>Dashboard com cards, alertas, escala do dia, próximos blocos</td></tr>
+  <tr><td><code>/calendario/</code></td><td>calendario</td><td>Calendário mensal (mês atual)</td></tr>
+  <tr><td><code>/calendario/&lt;ano&gt;/&lt;mes&gt;/</code></td><td>calendario</td><td>Calendário de um mês específico</td></tr>
+  <tr><td><code>/calendario/anual/</code></td><td>calendario_anual</td><td>Visão anual com 12 mini calendários</td></tr>
+  <tr><td><code>/dia/&lt;a&gt;/&lt;m&gt;/&lt;d&gt;/editar/</code></td><td>editar_dia</td><td>Editar S1/S2 de um dia específico</td></tr>
+  <tr><td><code>/dia/&lt;a&gt;/&lt;m&gt;/&lt;d&gt;/limpar/</code></td><td>limpar_dia</td><td>Remover escala de um dia (POST)</td></tr>
+  <tr><td><code>/usuarios/</code></td><td>usuarios</td><td>Lista de gerentes com estatísticas</td></tr>
+  <tr><td><code>/usuarios/&lt;pk&gt;/editar/</code></td><td>editar_usuario</td><td>Editar nome, grupo, status do gerente</td></tr>
+  <tr><td><code>/bloqueios/</code></td><td>bloqueios</td><td>Lista de férias e indisponibilidades</td></tr>
+  <tr><td><code>/bloqueios/adicionar/</code></td><td>adicionar_bloqueio</td><td>Cadastrar novo bloqueio (dispara regeneração)</td></tr>
+  <tr><td><code>/bloqueios/&lt;pk&gt;/editar/</code></td><td>editar_bloqueio</td><td>Editar bloqueio existente</td></tr>
+  <tr><td><code>/bloqueios/&lt;pk&gt;/remover/</code></td><td>remover_bloqueio</td><td>Remover bloqueio (dispara regeneração)</td></tr>
+  <tr><td><code>/feriados/</code></td><td>feriados</td><td>Lista de feriados cadastrados</td></tr>
+  <tr><td><code>/feriados/adicionar/</code></td><td>adicionar_feriado</td><td>Cadastrar novo feriado</td></tr>
+  <tr><td><code>/feriados/&lt;pk&gt;/editar/</code></td><td>editar_feriado</td><td>Editar/desativar feriado</td></tr>
+  <tr><td><code>/feriadoes/</code></td><td>feriadoes</td><td>Lista de feriadões (automáticos + manuais)</td></tr>
+  <tr><td><code>/gerar-escala/</code></td><td>gerar_escala</td><td>Interface de geração/regeneração</td></tr>
+  <tr><td><code>/trocar-escala/</code></td><td>trocar_escala</td><td>Trocar plantão entre dois usuários</td></tr>
+  <tr><td><code>/relatorios/</code></td><td>relatorios</td><td>Relatórios com filtros por ano/mês</td></tr>
+  <tr><td><code>/relatorios/exportar-csv/</code></td><td>exportar_csv</td><td>Exportar escala mensal em CSV</td></tr>
+  <tr><td><code>/relatorios/.../resumo-mensal/</code></td><td>exportar_resumo_csv</td><td>Exportar tabela de resumo mensal em CSV</td></tr>
+  <tr><td><code>/relatorios/.../resumo-anual/</code></td><td>exportar_resumo_csv</td><td>Exportar tabela de resumo anual em CSV</td></tr>
+  <tr><td><code>/exportar/</code></td><td>exportar</td><td>Página de exportação com opções</td></tr>
+  <tr><td><code>/fechar-mes/&lt;a&gt;/&lt;m&gt;/</code></td><td>fechar_mes_view</td><td>Fechar/bloquear mês (admin, POST)</td></tr>
+  <tr><td><code>/reabrir-mes/&lt;a&gt;/&lt;m&gt;/</code></td><td>reabrir_mes_view</td><td>Reabrir mês (admin, POST)</td></tr>
+</table>
+
+<!-- ======== 6. FRONTEND ======== -->
+<div class="page-break"></div>
+<h2 id="s6">6. Frontend — Design System</h2>
+
+<h3 id="s6.1">6.1 Paleta de Cores</h3>
+
+<table>
+  <tr><th>Token</th><th>Hex</th><th>Amostra</th><th>Uso</th></tr>
+  <tr><td>--color-primary</td><td><code>#1d4ed8</code></td><td style="background:#1d4ed8;width:30px">&nbsp;</td><td>Links, sidebar ativo, botões principais</td></tr>
+  <tr><td>--color-s1</td><td><code>#2563eb</code></td><td style="background:#2563eb;width:30px">&nbsp;</td><td>Badge S1 (trabalha)</td></tr>
+  <tr><td>--color-s2</td><td><code>#059669</code></td><td style="background:#059669;width:30px">&nbsp;</td><td>Badge S2 (sobreaviso)</td></tr>
+  <tr><td>--color-ferias</td><td><code>#7c3aed</code></td><td style="background:#7c3aed;width:30px">&nbsp;</td><td>Badge de férias</td></tr>
+  <tr><td>--color-bloqueio</td><td><code>#d97706</code></td><td style="background:#d97706;width:30px">&nbsp;</td><td>Badge de indisponibilidade</td></tr>
+  <tr><td>--color-feriado</td><td><code>#f59e0b</code></td><td style="background:#f59e0b;width:30px">&nbsp;</td><td>Fundo de célula de feriado</td></tr>
+  <tr><td>--color-feriadao</td><td><code>#8b5cf6</code></td><td style="background:#8b5cf6;width:30px">&nbsp;</td><td>Fundo de célula de feriadão</td></tr>
+  <tr><td>--color-sidebar</td><td><code>#0f172a</code></td><td style="background:#0f172a;width:30px">&nbsp;</td><td>Fundo da sidebar (dark)</td></tr>
+  <tr><td>--color-bg</td><td><code>#f1f5f9</code></td><td style="background:#f1f5f9;width:30px">&nbsp;</td><td>Fundo da página</td></tr>
+</table>
+
+<h3 id="s6.2">6.2 Componentes do Design System</h3>
+
+<p>O arquivo <code>static/css/estilo.css</code> define um design system completo com variáveis CSS custom properties:</p>
+
+<ul>
+  <li><strong>Layout:</strong> app-layout (flex), app-sidebar (260px fixo, dark), app-main (flex:1), app-topbar (56px sticky)</li>
+  <li><strong>Cards:</strong> .stat-card (métricas com ícone + valor + label), .card (borda, sombra, border-radius padronizados)</li>
+  <li><strong>Badges:</strong> .badge-s1, .badge-s2, .badge-ferias, .badge-bloqueio, .badge-feriado, .badge-feriadao, .badge-conflito</li>
+  <li><strong>Calendário:</strong> .calendar-grid (CSS Grid 7 colunas), .calendar-day (célula 95px), .calendar-list (cards mobile)</li>
+  <li><strong>Tabelas:</strong> .table-container (borda + border-radius), cabeçalho cinza, hover, responsiva com scroll horizontal</li>
+  <li><strong>Estados:</strong> .empty-state (tela vazia com ícone), .skeleton (loading), alertas com ícones contextuais</li>
+</ul>
+
+<h3 id="s6.3">6.3 Responsividade</h3>
+
+<table>
+  <tr><th>Breakpoint</th><th>Comportamento</th></tr>
+  <tr><td>≥ 992px (Desktop)</td><td>Sidebar fixa 260px + calendário em grid 7 colunas + tabelas completas</td></tr>
+  <tr><td>&lt; 992px (Tablet/Mobile)</td><td>Sidebar escondida (toggle hamburguer) + calendário vira lista de cards + tabelas com scroll horizontal</td></tr>
+  <tr><td>Mobile pequeno</td><td>Cards empilhados, botões maiores para toque, sidebar overlay com backdrop escuro</td></tr>
+</table>
+
+<p>A troca entre grid (desktop) e lista (mobile) é feita via classes Bootstrap <code>d-none d-lg-grid</code> / <code>d-lg-none</code> no template do calendário.</p>
+
+<!-- ======== 7. REGRAS DE NEGÓCIO ======== -->
+<div class="page-break"></div>
+<h2 id="s7">7. Regras de Negócio Implementadas</h2>
+
+<table>
+  <tr><th>#</th><th>Regra</th><th>Implementação</th></tr>
+  <tr><td>1</td><td>Nunca escalar usuário em férias ou bloqueado</td><td><code>get_usuarios_disponiveis()</code> filtra por <code>BloqueioUsuario</code> na data</td></tr>
+  <tr><td>2</td><td>Dupla sempre Grupo A + Grupo B</td><td><code>encontrar_melhor_par()</code> só testa pares A×B</td></tr>
+  <tr><td>3</td><td>Respeitar regra especial de feriadões</td><td><code>assignBlock()</code> — S1 cobra dias 1-2, S2 cobra último dia</td></tr>
+  <tr><td>4</td><td>Preservar edições manuais</td><td><code>gerar_escala_mensal(preservar_manuais=True)</code> — deleta só status=AUTOMATICA</td></tr>
+  <tr><td>5</td><td>Evitar escala próxima a férias (3 dias)</td><td><code>get_bloqueios_proximos()</code> — penalidade +1000 no scoring</td></tr>
+  <tr><td>6</td><td>Rotação de feriadões separada</td><td><code>feriadao_s1_count</code> e <code>feriadao_s2_count</code> nos usuários</td></tr>
+  <tr><td>7</td><td>Equilibrar S1 e S2</td><td>Penalidade ×50 por S1 ou S2 acumulado</td></tr>
+  <tr><td>8</td><td>Equilibrar total de plantões</td><td>Penalidade ×100 por plantão acumulado (PL inicial + gerado)</td></tr>
+  <tr><td>9</td><td>Meses fechados não podem ser alterados</td><td><code>is_mes_fechado()</code> — <code>gerar_escala_mensal()</code> recusa com alerta</td></tr>
+  <tr><td>10</td><td>Não sobrecarregar ao voltar de férias</td><td><code>_voltou_de_ferias_recentemente()</code> — bônus −150 no scoring</td></tr>
+</table>
+
+<!-- ======== 8. BANCO DE DADOS ======== -->
+<h2 id="s8">8. Banco de Dados</h2>
+
+<p>O sistema utiliza <strong>SQLite</strong> via Django ORM. O banco é um arquivo único (<code>db.sqlite3</code>) que não requer instalação ou configuração.</p>
+
+<h4>Dados iniciais (seed)</h4>
+<p>O comando <code>python manage.py seed_initial_data</code> popula:</p>
+<ul>
+  <li><strong>2 grupos</strong> (A e B)</li>
+  <li><strong>9 usuários</strong> (Copel 1 a 9) com FER e PL exatos da planilha original</li>
+  <li><strong>48 feriados</strong> (2025-2027): nacionais, estaduais (PR), municipais (CWB), móveis</li>
+  <li><strong>14 bloqueios</strong> convertidos das marcações F e N da planilha</li>
+  <li><strong>21 dias de escala</strong> importados exatamente da planilha (Mai + Jun/2026)</li>
+  <li><strong>178 dias de escala</strong> gerados automaticamente (Jul/2026 a Dez/2027)</li>
+  <li><strong>2 meses bloqueados</strong> (Mai e Jun/2026 como BLOQUEADO)</li>
+</ul>
+
+<!-- ======== 9. INSTALAÇÃO ======== -->
+<h2 id="s9">9. Instalação e Execução</h2>
+
+<pre>
+# 1. Acessar a pasta do projeto
+cd "C:\Users\Dae Sung Simioni\Downloads\escala_gerencial"
+
+# 2. Criar ambiente virtual (opcional, recomendado)
+python -m venv venv
+venv\Scripts\activate
+
+# 3. Instalar dependências
+pip install -r requirements.txt
+
+# 4. Criar banco e tabelas
+python manage.py migrate
+
+# 5. Popular dados iniciais (planilha → banco)
+python manage.py seed_initial_data
+
+# 6. Criar usuário administrador
+python manage.py createsuperuser
+
+# 7. Iniciar servidor
+python manage.py runserver
+
+# 8. Acessar no navegador
+# http://127.0.0.1:8000/
+</pre>
+
+<!-- ======== 10. TESTES ======== -->
+<div class="page-break"></div>
+<h2 id="s10">10. Testes Automatizados</h2>
+
+<p>O projeto possui <strong>19 testes unitários</strong> em 6 classes, cobrindo toda a lógica crítica:</p>
+
+<table>
+  <tr><th>Classe</th><th>Testes</th><th>Cobertura</th></tr>
+  <tr><td>EasterCalculationTests</td><td>3</td><td>Cálculo da Páscoa para 2025, 2026, 2027</td></tr>
+  <tr><td>FeriadaoDetectionTests</td><td>4</td><td>Detecção de feriadões, fins de semana, feriados isolados</td></tr>
+  <tr><td>CoverageBlockTests</td><td>2</td><td>Geração de blocos de cobertura mensal</td></tr>
+  <tr><td>ScaleGenerationTests</td><td>4</td><td>Geração de escala, regra A+B, bloqueio de usuários, preservação de manuais</td></tr>
+  <tr><td>AvailabilityTests</td><td>3</td><td>Disponibilidade de usuários com e sem bloqueios</td></tr>
+  <tr><td>ConflictValidationTests</td><td>3</td><td>Validação de conflitos (mesmo grupo, usuário bloqueado)</td></tr>
+</table>
+
+<pre>
+$ python manage.py test escalas -v 1
+Found 19 test(s).
+...................
+----------------------------------------------------------------------
+Ran 19 tests in 0.406s
+OK
+</pre>
+
+<div style="text-align:center; margin-top:40px; padding:20px; color:#94a3b8; font-size:9pt">
+  — Documentação gerada em Maio de 2026 —<br>
+  Escala de Sobreaviso Gerencial v1.0.0 · Curitiba, Paraná
+</div>
+
+</body>
+</html>

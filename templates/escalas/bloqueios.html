@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}Férias & Bloqueios — Escala{% endblock %}
+{% block page_title %}Férias & Bloqueios{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <p class="text-muted small mb-0">Gerencie férias, faltas, treinamentos e indisponibilidades dos gerentes.</p>
+  <a href="{% url 'adicionar_bloqueio' %}" class="btn btn-primary btn-sm"><i class="bi bi-plus-lg"></i> Novo Bloqueio</a>
+</div>
+
+<div class="table-container">
+  <div class="table-responsive">
+    <table class="table">
+      <thead><tr><th>Usuário</th><th>Tipo</th><th>Início</th><th>Fim</th><th class="text-center">Dias</th><th>Motivo</th><th class="text-end">Ações</th></tr></thead>
+      <tbody>
+        {% for blk in bloqueios %}
+          <tr>
+            <td><strong>{{ blk.usuario.nome }}</strong> <small class="text-muted">Grp {{ blk.usuario.grupo.nome }}</small></td>
+            <td>
+              {% if blk.tipo == 'FERIAS' %}<span class="badge badge-ferias">Férias</span>
+              {% elif blk.tipo == 'FALTA' %}<span class="badge badge-bloqueio">Falta</span>
+              {% elif blk.tipo == 'TREINAMENTO' %}<span class="badge bg-info">Treinamento</span>
+              {% elif blk.tipo == 'LICENCA' %}<span class="badge bg-secondary">Licença</span>
+              {% elif blk.tipo == 'AFASTAMENTO' %}<span class="badge bg-dark">Afastamento</span>
+              {% else %}<span class="badge badge-bloqueio">{{ blk.get_tipo_display }}</span>
+              {% endif %}
+            </td>
+            <td style="white-space:nowrap">{{ blk.data_inicio|date:"d/m/Y" }}</td>
+            <td style="white-space:nowrap">{{ blk.data_fim|date:"d/m/Y" }}</td>
+            <td class="text-center fw-bold">{{ blk.data_fim|timeuntil:blk.data_inicio }}</td>
+            <td><small class="text-muted">{{ blk.motivo|truncatechars:50|default:"—" }}</small></td>
+            <td class="text-end">
+              <a href="{% url 'editar_bloqueio' blk.pk %}" class="btn btn-sm btn-outline-secondary" title="Editar"><i class="bi bi-pencil"></i></a>
+              <form method="post" action="{% url 'remover_bloqueio' blk.pk %}" class="d-inline" onsubmit="return confirm('Remover este bloqueio permanentemente?')">
+                {% csrf_token %}<button class="btn btn-sm btn-outline-danger" title="Remover"><i class="bi bi-trash"></i></button>
+              </form>
+            </td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="7">
+            <div class="empty-state py-4"><i class="bi bi-shield-check"></i><h5>Nenhum bloqueio</h5><p class="small">Todos os gerentes estão disponíveis.</p></div>
+          </td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

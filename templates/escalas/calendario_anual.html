@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}Visão Anual {{ ano }} — Escala{% endblock %}
+{% block page_title %}Visão Anual — {{ ano }}{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <div class="d-flex align-items-center gap-2">
+    <a href="{% url 'calendario_anual' ano=ano_anterior %}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-chevron-left"></i></a>
+    <h3 class="mb-0 fw-bold">{{ ano }}</h3>
+    <a href="{% url 'calendario_anual' ano=ano_seguinte %}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-chevron-right"></i></a>
+  </div>
+  <a href="{% url 'calendario' %}" class="btn btn-outline-primary btn-sm"><i class="bi bi-calendar-month"></i> Mensal</a>
+</div>
+
+<div class="row g-3">
+  {% for mes_data in meses %}
+    <div class="col-6 col-md-4 col-lg-3">
+      <div class="card">
+        <div class="card-header py-2 d-flex justify-content-between align-items-center">
+          <strong style="font-size:.8rem">{{ mes_data.nome }}</strong>
+          <small class="text-{% if mes_data.dias_sem_escala > 0 %}danger{% else %}success{% endif %}" style="font-size:.65rem">
+            {{ mes_data.dias_com_escala }}/{{ mes_data.dias_com_escala|add:mes_data.dias_sem_escala }}
+          </small>
+        </div>
+        <div class="card-body p-1">
+          <table class="mini-calendar"><thead><tr class="text-center"><th class="text-danger">D</th><th>S</th><th>T</th><th>Q</th><th>Q</th><th>S</th><th class="text-primary">S</th></tr></thead>
+          <tbody>{% for week in mes_data.weeks %}<tr class="text-center">{% for day in week %}<td class="mini-day {% if day.other_month %}text-muted{% endif %} {% if day.day_type == 'feriadao' %}feriadao{% elif day.day_type == 'feriado' %}feriado{% elif day.day_type == 'fim_de_semana' %}fds{% endif %}" style="font-size:.5rem;font-weight:{% if day.assignment %}700{% else %}400{% endif %}">{{ day.date.day }}</td>{% endfor %}</tr>{% endfor %}</tbody></table>
+          <a href="{% url 'calendario_mes' ano=ano mes=mes_data.mes %}" class="btn btn-sm btn-outline-primary w-100 mt-1" style="font-size:.65rem">Abrir {{ mes_data.nome }}</a>
+        </div>
+      </div>
+    </div>
+  {% endfor %}
+</div>
+
+{% include "escalas/_resumo_tabela.html" with resumo=resumo media_plantoes=media_plantoes %}
+{% endblock %}

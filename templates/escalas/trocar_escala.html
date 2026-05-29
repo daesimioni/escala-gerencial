@@ -1,0 +1,6 @@
+{% extends "base.html" %}{% block title %}Trocar Plantão — Escala{% endblock %}{% block page_title %}Trocar Plantão{% endblock %}
+{% block content %}<div class="row justify-content-center"><div class="col-lg-8"><div class="card"><div class="card-header"><i class="bi bi-arrow-left-right"></i> Trocar escala entre usuários</div><div class="card-body">
+<form method="post">{% csrf_token %}<div class="row g-3">{% for field in form %}<div class="col-md-6"><label class="form-label">{{ field.label }}</label>{{ field }}{% if field.help_text %}<div class="form-text small">{{ field.help_text }}</div>{% endif %}{% if field.errors %}<div class="text-danger small mt-1">{{ field.errors }}</div>{% endif %}</div>{% endfor %}</div>
+<div class="alert alert-warning mt-3 small"><i class="bi bi-info-circle"></i> A troca valida automaticamente a regra <strong>Grupo A + Grupo B</strong>. Se o resultado for inválido, a operação será rejeitada.</div>
+<div class="mt-2"><button type="submit" class="btn btn-primary"><i class="bi bi-check-lg"></i> Realizar Troca</button><a href="{% url 'calendario' %}" class="btn btn-outline-secondary ms-2">Cancelar</a></div></form>
+</div></div></div></div>{% endblock %}

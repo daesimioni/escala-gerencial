@@ -100,7 +100,7 @@ class Command(BaseCommand):
         Convert ALL F and N spreadsheet markings into real BloqueioUsuario records.
         Includes blocks from all months visible in the planilha.
         FER = total historical ferias days (COUNTIF of F cells).
-        PL  = total historical plantoes (COUNTIF of S1 + S2 cells).
+        PL  = total historical plantoes from the source spreadsheet.
         """
         bloqueios = [
             # ── Bloqueios em Mai/Jun 2026 (afetam meses fechados) ──
@@ -168,26 +168,26 @@ class Command(BaseCommand):
 
         assignments = [
             # Feriadão May 1-3 (Labor Day Fri-Sun)
-            # S1 covers first 2 days, S2 covers last
-            (dia(1),  u['Copel 1'], u['Copel 9']),   # S1=Copel1, S2=Copel9
-            (dia(2),  u['Copel 1'], u['Copel 9']),
-            (dia(3),  u['Copel 9'], u['Copel 1']),   # S2 takes last day
+            # Single on-call manager per day
+            (dia(1),  u['Copel 1'], None),
+            (dia(2),  u['Copel 9'], None),
+            (dia(3),  u['Copel 2'], None),
 
             # Weekend May 9-10
-            (dia(9),  u['Copel 2'], u['Copel 7']),
-            (dia(10), u['Copel 7'], u['Copel 2']),
+            (dia(9),  u['Copel 7'], None),
+            (dia(10), u['Copel 2'], None),
 
             # Weekend May 16-17
-            (dia(16), u['Copel 4'], u['Copel 8']),
-            (dia(17), u['Copel 8'], u['Copel 4']),
+            (dia(16), u['Copel 4'], None),
+            (dia(17), u['Copel 8'], None),
 
             # Weekend May 23-24
-            (dia(23), u['Copel 3'], u['Copel 6']),
-            (dia(24), u['Copel 6'], u['Copel 3']),
+            (dia(23), u['Copel 3'], None),
+            (dia(24), u['Copel 6'], None),
 
             # Weekend May 30-31 (overlaps with Corpus Christi feriadão Jun 4-7)
-            (dia(30), u['Copel 2'], u['Copel 7']),
-            (dia(31), u['Copel 7'], u['Copel 2']),
+            (dia(30), u['Copel 2'], None),
+            (dia(31), u['Copel 7'], None),
         ]
 
         for d, s1, s2 in assignments:
@@ -220,23 +220,23 @@ class Command(BaseCommand):
         assignments = [
             # Feriadão Corpus Christi Jun 4-7 (Thu-Sun, 4 days)
             # Copel 3 and Copel 9 on vacation — cannot be assigned
-            # S1 covers first 2 days, S2 covers last
-            (dia(4),  u['Copel 1'], u['Copel 8']),   # S1=Copel1, S2=Copel8
-            (dia(5),  u['Copel 1'], u['Copel 8']),
-            (dia(6),  u['Copel 1'], u['Copel 8']),   # intermediate
-            (dia(7),  u['Copel 8'], u['Copel 1']),   # S2 takes last day (swap roles)
+            # Single on-call manager per day
+            (dia(4),  u['Copel 1'], None),
+            (dia(5),  u['Copel 8'], None),
+            (dia(6),  u['Copel 2'], None),
+            (dia(7),  u['Copel 6'], None),
 
             # Weekend Jun 13-14
-            (dia(13), u['Copel 5'], u['Copel 6']),
-            (dia(14), u['Copel 6'], u['Copel 5']),
+            (dia(13), u['Copel 5'], None),
+            (dia(14), u['Copel 6'], None),
 
             # Weekend Jun 20-21
-            (dia(20), u['Copel 4'], u['Copel 7']),
-            (dia(21), u['Copel 7'], u['Copel 4']),
+            (dia(20), u['Copel 4'], None),
+            (dia(21), u['Copel 7'], None),
 
             # Weekend Jun 27-28
-            (dia(27), u['Copel 2'], u['Copel 8']),
-            (dia(28), u['Copel 8'], u['Copel 2']),
+            (dia(27), u['Copel 2'], None),
+            (dia(28), u['Copel 8'], None),
         ]
 
         for d, s1, s2 in assignments:

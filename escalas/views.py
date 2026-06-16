@@ -237,7 +237,7 @@ def calendario_anual(request, ano=None):
 
 @login_required
 def editar_dia(request, ano, mes, dia):
-    """Edit S1/S2 for a specific day."""
+    """Edit the on-call manager for a specific day."""
     data = date(ano, mes, dia)
     escala = EscalaDia.objects.filter(data=data).first()
 
@@ -246,6 +246,10 @@ def editar_dia(request, ano, mes, dia):
         if form.is_valid():
             instance = form.save(commit=False)
             instance.data = data
+
+            instance.s2 = None
+            instance.manual = True
+            instance.status = 'MANUAL'
 
             # Validate
             problemas = validar_dia(data, instance.s1, instance.s2)
@@ -266,7 +270,7 @@ def editar_dia(request, ano, mes, dia):
                 usuario=request.user,
                 tipo='EDICAO_DIA',
                 descricao=f'Edição do dia {data}',
-                dados_novos={'s1': instance.s1_id, 's2': instance.s2_id, 'manual': True},
+                dados_novos={'s1': instance.s1_id, 'manual': True},
             )
 
             for a in alertas:
@@ -286,7 +290,7 @@ def editar_dia(request, ano, mes, dia):
 
 @login_required
 def limpar_dia(request, ano, mes, dia):
-    """Clear S1/S2 for a day."""
+    """Clear the on-call manager for a day."""
     data = date(ano, mes, dia)
     if request.method == 'POST':
         EscalaDia.objects.filter(data=data).delete()
@@ -464,91 +468,49 @@ def adicionar_feriadao(request):
 
 
 # ─── Scale Generation ────────────────────────────────────────────────────────
-
-@login_required
-def gerar_escala(request):
-    """Trigger scale generation for a specific month or year."""
-    if request.method == 'POST':
-        form = GeracaoEscalaForm(request.POST)
-        if form.is_valid():
-            ano = form.cleaned_data['ano']
-            mes = form.cleaned_data['mes']
-            preservar = form.cleaned_data['preservar_manuais']
-
-            criados, erros = gerar_escala_mensal(ano, mes, preservar, request.user)
-
-            HistoricoAlteracao.objects.create(
-                usuario=request.user,
-                tipo='REGENERACAO',
-                descricao=f'Regeneração da escala para {mes:02d}/{ano}',
-            )
-
-            messages.success(request, f'Escala gerada: {criados} dias criados para {mes:02d}/{ano}.')
-            if erros:
-                for e in erros:
-                    messages.warning(request, e)
-
-            return redirect('calendario_mes', ano=ano, mes=mes)
-    else:
-        hoje = date.today()
-        form = GeracaoEscalaForm(initial={'ano': hoje.year, 'mes': hoje.month})
-
-    return render(request, 'escalas/gerar_escala.html', {'form': form})
-
-
 # ─── Shift Swap ──────────────────────────────────────────────────────────────
+
 
 @login_required
 def trocar_escala(request):
-    """Swap assignments between two users on a given date."""
+    """Replace the on-call manager on a given date."""
     if request.method == 'POST':
         form = TrocaEscalaForm(request.POST)
         if form.is_valid():
             data = form.cleaned_data['data']
-            origem = form.cleaned_data['usuario_origem']
             destino = form.cleaned_data['usuario_destino']
-            role_origem = form.cleaned_data['role_origem']
-            role_destino = form.cleaned_data['role_destino']
 
             escala = EscalaDia.objects.filter(data=data).first()
             if not escala:
                 messages.error(request, f'Não há escala cadastrada para {data}.')
                 return redirect('trocar_escala')
 
-            # Validate group rule
-            novo_s1 = escala.s1
-            novo_s2 = escala.s2
-
-            if role_origem == 'S1':
-                novo_s1 = destino
-            else:
-                novo_s2 = destino
-
-            if role_destino == 'S1':
-                novo_s1 = origem
-            else:
-                novo_s2 = origem
-
-            if novo_s1 and novo_s2 and novo_s1.grupo_id == novo_s2.grupo_id:
-                messages.error(request, 'Troca inválida: resultaria em dupla do mesmo grupo!')
+            anterior_id = escala.s1_id
+            problemas = validar_dia(data, destino, None)
+            erros = [p for p in problemas if p['tipo'] == 'erro']
+            if erros:
+                for e in erros:
+                    messages.error(request, e['msg'])
                 return redirect('trocar_escala')
 
-            # Apply swap
-            escala.s1 = novo_s1
-            escala.s2 = novo_s2
+            escala.s1 = destino
+            escala.s2 = None
             escala.manual = True
+            escala.status = 'MANUAL'
             escala.editado_por = request.user
             escala.editado_em = timezone.now()
             escala.save()
+            _atualizar_contadores_usuarios()
 
             HistoricoAlteracao.objects.create(
                 usuario=request.user,
                 tipo='TROCA_ESCALA',
-                descricao=f'Troca em {data}: {origem.nome}({role_origem}) ↔ {destino.nome}({role_destino})',
-                dados_anteriores={'s1': escala.s1_id, 's2': escala.s2_id},
+                descricao=f'Troca em {data}: novo sobreaviso {destino.nome}',
+                dados_anteriores={'s1': anterior_id},
+                dados_novos={'s1': destino.id},
             )
 
-            messages.success(request, f'Troca realizada para {data}.')
+            messages.success(request, f'Sobreaviso atualizado para {data}.')
             return redirect('calendario_mes', ano=data.year, mes=data.month)
     else:
         form = TrocaEscalaForm(initial={'data': date.today()})
@@ -586,41 +548,39 @@ def relatorios(request):
 
 @login_required
 def exportar_csv(request):
-    """Export monthly scale as CSV."""
+    """Export monthly on-call schedule as CSV."""
     ano = int(request.GET.get('ano', date.today().year))
     mes = int(request.GET.get('mes', date.today().month))
 
     response = HttpResponse(content_type='text/csv; charset=utf-8')
     response['Content-Disposition'] = f'attachment; filename="escala_{ano}_{mes:02d}.csv"'
-    response.write('﻿')  # BOM for Excel
+    response.write('\ufeff')
 
     writer = csv.writer(response)
-    writer.writerow(['Data', 'Dia', 'Tipo', 'S1', 'Grupo S1', 'S2', 'Grupo S2', 'Manual', 'Observação'])
+    writer.writerow(['Data', 'Dia', 'Tipo', 'Gerente de Sobreaviso', 'Grupo', 'Manual', 'Observacao'])
 
-    dia_names = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom']
+    dia_names = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sab', 'Dom']
     days_in_month = monthrange(ano, mes)[1]
 
     for d in range(1, days_in_month + 1):
         data = date(ano, mes, d)
-        escala = EscalaDia.objects.filter(data=data).select_related('s1', 's2').first()
+        escala = EscalaDia.objects.filter(data=data).select_related('s1', 's1__grupo').first()
 
         tipo = 'Comum'
         if escala:
             if escala.feriadao:
-                tipo = 'Feriadão'
+                tipo = 'Feriadao'
             elif escala.feriado:
                 tipo = 'Feriado'
             elif escala.fim_de_semana:
                 tipo = 'FDS'
 
-        s1_nome = escala.s1.nome if escala and escala.s1 else ''
-        s1_grupo = escala.s1.grupo.nome if escala and escala.s1 else ''
-        s2_nome = escala.s2.nome if escala and escala.s2 else ''
-        s2_grupo = escala.s2.grupo.nome if escala and escala.s2 else ''
-        manual = 'Sim' if escala and escala.manual else 'Não'
+        gerente_nome = escala.s1.nome if escala and escala.s1 else ''
+        gerente_grupo = escala.s1.grupo.nome if escala and escala.s1 else ''
+        manual = 'Sim' if escala and escala.manual else 'Nao'
         obs = escala.observacao if escala else ''
 
-        writer.writerow([data, dia_names[data.weekday()], tipo, s1_nome, s1_grupo, s2_nome, s2_grupo, manual, obs])
+        writer.writerow([data, dia_names[data.weekday()], tipo, gerente_nome, gerente_grupo, manual, obs])
 
     return response
 
@@ -630,6 +590,8 @@ def exportar(request):
     """Export page."""
     return render(request, 'escalas/exportar.html')
 
+
+# ─── Month Locking ───────────────────────────────────────────────────────────
 
 @login_required
 def exportar_resumo_csv(request):
@@ -651,12 +613,13 @@ def exportar_resumo_csv(request):
 
     response = HttpResponse(content_type='text/csv; charset=utf-8')
     response['Content-Disposition'] = f'attachment; filename="{filename}"'
-    response.write('﻿')  # BOM for Excel
+    response.write('\ufeff')
 
     writer = csv.writer(response)
     writer.writerow([
-        'Usuário', 'Grupo', 'Total Plantões', 'Sábados', 'Domingos',
-        'Feriados', 'Feriadões', 'S1', 'S2', 'Férias (dias)', 'Bloqueios (dias)'
+        'Usuario', 'Grupo', 'Total Sobreaviso', 'Dias Disponiveis',
+        'Sabados', 'Domingos', 'Feriados', 'Feriadoes',
+        'Ferias (dias)', 'Bloqueios (dias)'
     ])
 
     for row in dados:
@@ -664,20 +627,17 @@ def exportar_resumo_csv(request):
             row['usuario'].nome,
             row['grupo'],
             row['total_plantoes'],
+            row['dias_disponiveis'],
             row['sabados'],
             row['domingos'],
             row['feriados'],
             row['feriadoes'],
-            row['s1'],
-            row['s2'],
             row['ferias_dias'],
             row['bloqueios_dias'],
         ])
 
     return response
 
-
-# ─── Month Locking ───────────────────────────────────────────────────────────
 
 @login_required
 def fechar_mes_view(request, ano, mes):

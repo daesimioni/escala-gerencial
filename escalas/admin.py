@@ -20,8 +20,8 @@ class UsuarioEscalaAdmin(admin.ModelAdmin):
     list_display = [
         'nome', 'grupo', 'ativo',
         'fer_inicial', 'pl_inicial',
-        'total_s1', 'total_s2',
-        'feriadao_s1_count', 'feriadao_s2_count',
+        'total_s1', 'total_dias_sobreaviso',
+        'feriadao_s1_count',
         'ultima_escala',
     ]
     list_filter = ['grupo', 'ativo']
@@ -52,9 +52,9 @@ class FeriadaoAdmin(admin.ModelAdmin):
 
 @admin.register(EscalaDia)
 class EscalaDiaAdmin(admin.ModelAdmin):
-    list_display = ['data', 's1', 's2', 'fim_de_semana', 'feriado', 'feriadao', 'manual']
+    list_display = ['data', 's1', 'fim_de_semana', 'feriado', 'feriadao', 'manual']
     list_filter = ['fim_de_semana', 'feriado', 'feriadao', 'manual']
-    search_fields = ['s1__nome', 's2__nome']
+    search_fields = ['s1__nome']
     date_hierarchy = 'data'
 
 

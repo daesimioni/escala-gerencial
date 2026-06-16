@@ -69,22 +69,10 @@
         {% if day.assignment %}
         <div class="calendar-day-assignments">
           {% if day.assignment.s1 %}
-            <span class="calendar-tag s1">S1 {{ day.assignment.s1.nome }}</span>
-          {% endif %}
-          {% if day.assignment.s2 %}
-            <span class="calendar-tag s2">S2 {{ day.assignment.s2.nome }}</span>
+            <span class="calendar-tag s1">Sobreaviso {{ day.assignment.s1.nome }}</span>
           {% endif %}
         </div>
         {% endif %}
-
-        <!-- Blocks -->
-        {% for blk in day.blocks %}
-          {% if blk.tipo == 'FERIAS' %}
-            <span class="calendar-tag ferias">F {{ blk.usuario.nome }}</span>
-          {% else %}
-            <span class="calendar-tag bloqueio">N {{ blk.usuario.nome }}</span>
-          {% endif %}
-        {% endfor %}
 
         <!-- Edit button -->
         {% if not day.other_month %}
@@ -130,22 +118,12 @@
             <div style="font-weight:600;font-size:.8rem">{{ day.date|date:"d/m/Y" }}</div>
             {% if day.assignment %}
               {% if day.assignment.s1 %}
-                <span class="badge badge-s1" style="font-size:.6rem">S1 {{ day.assignment.s1.nome }}</span>
-              {% endif %}
-              {% if day.assignment.s2 %}
-                <span class="badge badge-s2" style="font-size:.6rem">S2 {{ day.assignment.s2.nome }}</span>
+                <span class="badge badge-s1" style="font-size:.6rem">Sobreaviso {{ day.assignment.s1.nome }}</span>
               {% endif %}
               {% if day.assignment.manual %}
                 <span style="font-size:.6rem;color:var(--color-manual)">✎</span>
               {% endif %}
             {% endif %}
-            {% for blk in day.blocks %}
-              {% if blk.tipo == 'FERIAS' %}
-                <span class="badge badge-ferias" style="font-size:.6rem">F {{ blk.usuario.nome }}</span>
-              {% else %}
-                <span class="badge badge-bloqueio" style="font-size:.6rem">N {{ blk.usuario.nome }}</span>
-              {% endif %}
-            {% endfor %}
           </div>
 
           <a href="{% url 'editar_dia' ano=day.date.year mes=day.date.month dia=day.date.day %}"
@@ -160,10 +138,7 @@
 
 <!-- Legend -->
 <div class="legend mt-3">
-  <div class="legend-item"><span class="legend-swatch" style="background:var(--color-s1)"></span> S1 Trabalha</div>
-  <div class="legend-item"><span class="legend-swatch" style="background:var(--color-s2)"></span> S2 Sobreaviso</div>
-  <div class="legend-item"><span class="legend-swatch" style="background:var(--color-ferias)"></span> Férias</div>
-  <div class="legend-item"><span class="legend-swatch" style="background:var(--color-bloqueio)"></span> Indisponível</div>
+  <div class="legend-item"><span class="legend-swatch" style="background:var(--color-s1)"></span> Sobreaviso</div>
   <div class="legend-item"><span class="legend-swatch" style="background:var(--color-feriado)"></span> Feriado</div>
   <div class="legend-item"><span class="legend-swatch" style="background:var(--color-feriadao)"></span> Feriadão</div>
   <div class="legend-item">✎ Manual</div>

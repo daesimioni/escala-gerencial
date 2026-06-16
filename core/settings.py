@@ -1,15 +1,28 @@
 """
 Django settings for escala_gerencial project.
 """
+import os
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = 'django-insecure-escala-gerencial-dev-key-change-in-production'
 
-DEBUG = True
+def _csv_env(name, default):
+    value = os.environ.get(name)
+    if not value:
+        return default
+    return [item.strip() for item in value.split(',') if item.strip()]
 
-ALLOWED_HOSTS = ['*']
+
+SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'django-insecure-escala-gerencial-dev-key-change-in-production')
+
+DEBUG = os.environ.get('DJANGO_DEBUG', 'True').lower() in {'1', 'true', 'yes', 'on'}
+
+ALLOWED_HOSTS = _csv_env('DJANGO_ALLOWED_HOSTS', ['*'])
+CSRF_TRUSTED_ORIGINS = _csv_env('DJANGO_CSRF_TRUSTED_ORIGINS', [])
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+SESSION_COOKIE_SECURE = os.environ.get('DJANGO_SECURE_COOKIES', 'False').lower() in {'1', 'true', 'yes', 'on'}
+CSRF_COOKIE_SECURE = SESSION_COOKIE_SECURE
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -71,11 +84,11 @@ USE_I18N = True
 USE_L10N = True
 USE_TZ = True
 
-STATIC_URL = 'static/'
+STATIC_URL = '/static/'
 STATICFILES_DIRS = [BASE_DIR / 'static']
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 
-MEDIA_URL = 'media/'
+MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'

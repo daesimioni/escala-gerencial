@@ -383,10 +383,36 @@ def get_usuarios_disponiveis(d, grupo=None):
     return disponiveis
 
 
+def _usuario_disponivel(usuario, d):
+    """Return True when the user has no block/vacation on the date."""
+    return not BloqueioUsuario.objects.filter(
+        usuario=usuario, data_inicio__lte=d, data_fim__gte=d
+    ).exists()
+
+
+def _gerente_do_dia(d):
+    """Return the scheduled on-call manager for a date, if any."""
+    escala = EscalaDia.objects.filter(data=d).select_related('s1').first()
+    return escala.s1 if escala else None
+
+
+def _tem_escala_consecutiva(usuario, d, atribuicoes_temp=None):
+    """Prevent the same manager from being assigned on adjacent dates."""
+    atribuicoes_temp = atribuicoes_temp or {}
+    for adj in (d - timedelta(days=1), d + timedelta(days=1)):
+        temp = atribuicoes_temp.get(adj)
+        if temp and temp.id == usuario.id:
+            return True
+        gerente = _gerente_do_dia(adj)
+        if gerente and gerente.id == usuario.id:
+            return True
+    return False
+
+
 def get_dias_desde_ultima_escala(usuario, data_ref):
     """Days since user's last assignment."""
     ultima = EscalaDia.objects.filter(
-        dm.Q(s1=usuario) | dm.Q(s2=usuario),
+        s1=usuario,
         data__lt=data_ref,
     ).order_by('-data').first()
     if ultima:
@@ -418,211 +444,172 @@ def get_bloqueios_proximos(usuario, data_ref, margem=3):
 
 # ─── Scoring Engine ──────────────────────────────────────────────────────────
 
-def calcular_score_usuario(usuario, role, bloco, stats_cache):
-    """
-    Score a user for a given role in a block. Lower = better candidate.
 
-    Factors (all lower = better candidate):
-    - Total plantões (weight: 100)
-    - Role-specific count: S1/S2 (weight: 50)
-    - Recency (weight: up to 500 for very recent)
-    - Fins de semana (weight: 80)
-    - Feriados (weight: 120)
-    - Feriadão rotation (weight: 300)
-    - Block proximity penalty (weight: 1000)
-    - Just returned from vacation bonus (weight: -150)
-    - About to enter vacation (weight: 800)
-    """
-    stats = stats_cache.get(usuario.id, {
-        'plantoes': usuario.pl_inicial,
-        's1': usuario.total_s1,
-        's2': usuario.total_s2,
-        'feriadao_s1': usuario.feriadao_s1_count,
-        'feriadao_s2': usuario.feriadao_s2_count,
+# ─── Pair Assignment ─────────────────────────────────────────────────────────
+
+
+def build_stats_cache():
+    """Build current workload stats using the single on-call assignment."""
+    usuarios = list(UsuarioEscala.objects.filter(ativo=True))
+    cache = {
+        u.id: {
+            'plantoes': 0,
+            'oportunidades': 0,
+            'ultima': None,
+            'fins_de_semana': 0,
+            'feriados_count': 0,
+            'feriadoes_count': 0,
+        }
+        for u in usuarios
+    }
+
+    escalas = EscalaDia.objects.filter(s1__isnull=False).select_related('s1').order_by('data')
+    datas_com_escala = list(escalas.values_list('data', flat=True).distinct())
+
+    for d in datas_com_escala:
+        for u in usuarios:
+            if _usuario_disponivel(u, d):
+                cache[u.id]['oportunidades'] += 1
+
+    for ed in escalas:
+        stats = cache.get(ed.s1_id)
+        if not stats:
+            continue
+        stats['plantoes'] += 1
+        stats['ultima'] = ed.data
+        if ed.fim_de_semana:
+            stats['fins_de_semana'] += 1
+        if ed.feriado:
+            stats['feriados_count'] += 1
+        if ed.feriadao:
+            stats['feriadoes_count'] += 1
+
+    return cache
+
+
+def _registrar_oportunidades_do_dia(d, stats_cache):
+    """Count this date as an opportunity for every available active manager."""
+    for usuario in UsuarioEscala.objects.filter(ativo=True):
+        if _usuario_disponivel(usuario, d):
+            stats_cache.setdefault(usuario.id, {
+                'plantoes': 0,
+                'oportunidades': 0,
+                'ultima': None,
+                'fins_de_semana': 0,
+                'feriados_count': 0,
+                'feriadoes_count': 0,
+            })
+            stats_cache[usuario.id]['oportunidades'] += 1
+
+
+def _registrar_atribuicao(usuario, d, tipo_bloco, stats_cache):
+    """Update in-memory workload after assigning a manager."""
+    stats = stats_cache.setdefault(usuario.id, {
+        'plantoes': 0,
+        'oportunidades': 0,
         'ultima': None,
         'fins_de_semana': 0,
         'feriados_count': 0,
+        'feriadoes_count': 0,
+    })
+    stats['plantoes'] += 1
+    stats['ultima'] = d
+    if tipo_bloco == 'FIM_DE_SEMANA':
+        stats['fins_de_semana'] += 1
+    elif tipo_bloco == 'FERIADO':
+        stats['feriados_count'] += 1
+    elif tipo_bloco == 'FERIADAO':
+        stats['feriadoes_count'] += 1
+
+
+def calcular_score_usuario(usuario, data_ref, tipo_bloco, stats_cache):
+    """
+    Score one manager for a single on-call day. Lower = better candidate.
+
+    Fairness uses assignments divided by available opportunities. Vacation days
+    reduce opportunities, so the scheduler does not compensate missed vacation
+    days by overloading the manager later.
+    """
+    stats = stats_cache.get(usuario.id, {
+        'plantoes': 0,
+        'oportunidades': 0,
+        'ultima': None,
+        'fins_de_semana': 0,
+        'feriados_count': 0,
+        'feriadoes_count': 0,
     })
 
-    score = 0.0
+    oportunidades = max(stats.get('oportunidades', 0), 1)
+    carga_relativa = stats.get('plantoes', 0) / oportunidades
 
-    # Base: total plantões (combine initial + computed)
-    score += stats['plantoes'] * 100
+    score = carga_relativa * 10000
+    score += stats.get('plantoes', 0) * 35
 
-    # Role balance
-    if role == 'S1':
-        score += stats['s1'] * 50
-    else:
-        score += stats['s2'] * 50
+    if tipo_bloco == 'FIM_DE_SEMANA':
+        score += stats.get('fins_de_semana', 0) * 40
+    elif tipo_bloco == 'FERIADO':
+        score += stats.get('feriados_count', 0) * 70
+    elif tipo_bloco == 'FERIADAO':
+        score += stats.get('feriadoes_count', 0) * 70
 
-    # Fins de semana trabalhados
-    score += stats['fins_de_semana'] * 80
-
-    # Feriados pegos
-    if bloco['type'] == 'FERIADO':
-        score += stats['feriados_count'] * 120
-
-    # Recency
-    if stats['ultima']:
-        gap_dias = (bloco['days'][0] - stats['ultima']).days
-        if gap_dias < 7:
-            score += 500
-        elif gap_dias < 10:
+    ultima = stats.get('ultima')
+    if ultima:
+        gap_dias = (data_ref - ultima).days
+        if gap_dias <= 1:
+            score += 100000
+        elif gap_dias <= 3:
+            score += 600
+        elif gap_dias <= 7:
             score += 250
-        elif gap_dias < 14:
-            score += 100
-        elif gap_dias < 21:
-            score += 30
+        elif gap_dias <= 14:
+            score += 80
     else:
-        score -= 200  # Bonus for never assigned
-
-    # Feriadão rotation
-    if bloco['type'] == 'FERIADAO':
-        if role == 'S1':
-            score += stats['feriadao_s1'] * 300
-        else:
-            score += stats['feriadao_s2'] * 300
-
-    # Historical FER: users with more historical vacation days should get
-    # slightly more assignments going forward (they've rested more).
-    # Negative score = preference. Capped at reasonable impact.
-    score -= min(usuario.fer_inicial, 30) * 15
-
-    # Just returned from vacation — don't overload immediately (negative = bonus/priority)
-    if _voltou_de_ferias_recentemente(usuario, bloco['days'][0]):
-        score -= 150
-
-    # About to enter vacation — heavy penalty to avoid scheduling
-    if _vai_entrar_de_ferias(usuario, bloco['days'][0]):
-        score += 800
-
-    # Block proximity check
-    if get_bloqueios_proximos(usuario, bloco['days'][0]):
-        score += 1000
+        score -= 100
 
     return score
 
 
-def _voltou_de_ferias_recentemente(usuario, data_ref, dias=3):
-    """Check if user just returned from vacation (within `dias` days)."""
-    fim_ferias = data_ref - timedelta(days=dias)
-    return BloqueioUsuario.objects.filter(
-        usuario=usuario, tipo='FERIAS',
-        data_fim__gte=fim_ferias,
-        data_fim__lt=data_ref,
-    ).exists()
+def encontrar_melhor_gerente(d, tipo_bloco, stats_cache, atribuicoes_temp=None):
+    """Return the best single on-call manager for one date, or None."""
+    atribuicoes_temp = atribuicoes_temp or {}
+    candidatos = []
+    for usuario in UsuarioEscala.objects.filter(ativo=True).select_related('grupo'):
+        if not _usuario_disponivel(usuario, d):
+            continue
+        if _tem_escala_consecutiva(usuario, d, atribuicoes_temp):
+            continue
+        score = calcular_score_usuario(usuario, d, tipo_bloco, stats_cache)
+        candidatos.append((score, usuario.nome, usuario.id, usuario))
 
+    if not candidatos:
+        return None
 
-def _vai_entrar_de_ferias(usuario, data_ref, dias=5):
-    """Check if user is about to go on vacation (within `dias` days)."""
-    inicio_ferias = data_ref + timedelta(days=dias)
-    return BloqueioUsuario.objects.filter(
-        usuario=usuario, tipo='FERIAS',
-        data_inicio__gt=data_ref,
-        data_inicio__lte=inicio_ferias,
-    ).exists()
+    candidatos.sort(key=lambda item: (item[0], item[1], item[2]))
+    return candidatos[0][3]
 
-
-def build_stats_cache():
-    """Build a stats dict for all users from current DB state."""
-    cache = {}
-    for u in UsuarioEscala.objects.filter(ativo=True):
-        # Count assignments from EscalaDia
-        all_escalas = EscalaDia.objects.filter(dm.Q(s1=u) | dm.Q(s2=u))
-        s1_count = all_escalas.filter(s1=u).count()
-        s2_count = all_escalas.filter(s2=u).count()
-        fds_count = all_escalas.filter(fim_de_semana=True).count()
-        feriados_count = all_escalas.filter(feriado=True).count()
-        ultima = all_escalas.order_by('-data').first()
-
-        cache[u.id] = {
-            'plantoes': u.pl_inicial + s1_count + s2_count,
-            's1': u.total_s1 + s1_count,
-            's2': u.total_s2 + s2_count,
-            'feriadao_s1': u.feriadao_s1_count,
-            'feriadao_s2': u.feriadao_s2_count,
-            'fins_de_semana': fds_count,
-            'feriados_count': feriados_count,
-            'ultima': ultima.data if ultima else None,
-        }
-    return cache
-
-
-# ─── Pair Assignment ─────────────────────────────────────────────────────────
 
 def encontrar_melhor_par(bloco, stats_cache):
     """
-    Find best S1/S2 pair for a coverage block.
-
-    Returns: {s1: UsuarioEscala, s2: UsuarioEscala, _assignments: {date: {s1, s2}}}
-    or None if no valid pair.
+    Compatibility wrapper: returns daily single-manager assignments in s1.
+    s2 is always empty under the current scheduling rule.
     """
-    grupo_a = GrupoEscala.objects.get(nome='A')
-    grupo_b = GrupoEscala.objects.get(nome='B')
-
-    disponiveis_a = get_usuarios_disponiveis(bloco['days'][0], grupo_a)
-    disponiveis_b = get_usuarios_disponiveis(bloco['days'][0], grupo_b)
-
-    if not disponiveis_a or not disponiveis_b:
-        return None
-
-    best_pair = None
-    best_score = float('inf')
-
-    for ua in disponiveis_a:
-        for ub in disponiveis_b:
-            # ua=S1, ub=S2
-            s1_score = calcular_score_usuario(ua, 'S1', bloco, stats_cache)
-            s2_score = calcular_score_usuario(ub, 'S2', bloco, stats_cache)
-            total = s1_score + s2_score
-            if total < best_score:
-                best_score = total
-                best_pair = {'s1': ua, 's2': ub}
-
-            # ua=S2, ub=S1
-            s1_score = calcular_score_usuario(ub, 'S1', bloco, stats_cache)
-            s2_score = calcular_score_usuario(ua, 'S2', bloco, stats_cache)
-            total = s1_score + s2_score
-            if total < best_score:
-                best_score = total
-                best_pair = {'s1': ub, 's2': ua}
-
-    if not best_pair:
-        return None
-
-    # Create per-day assignments based on block type
-    days = sorted(bloco['days'])
     assignments = {}
+    temp_assignments = {}
+    local_stats = {
+        user_id: stats.copy()
+        for user_id, stats in stats_cache.items()
+    }
 
-    if bloco['type'] == 'FERIADAO':
-        if len(days) == 1:
-            assignments[days[0]] = {'s1': best_pair['s1'], 's2': best_pair['s2']}
-        elif len(days) == 2:
-            assignments[days[0]] = {'s1': best_pair['s1'], 's2': best_pair['s2']}
-            assignments[days[1]] = {'s1': best_pair['s2'], 's2': best_pair['s1']}
-        elif len(days) == 3:
-            assignments[days[0]] = {'s1': best_pair['s1'], 's2': best_pair['s2']}
-            assignments[days[1]] = {'s1': best_pair['s1'], 's2': best_pair['s2']}
-            assignments[days[2]] = {'s1': best_pair['s2'], 's2': best_pair['s1']}
-        else:
-            assignments[days[0]] = {'s1': best_pair['s1'], 's2': best_pair['s2']}
-            assignments[days[1]] = {'s1': best_pair['s1'], 's2': best_pair['s2']}
-            for i in range(2, len(days) - 1):
-                if i % 2 == 0:
-                    assignments[days[i]] = {'s1': best_pair['s1'], 's2': best_pair['s2']}
-                else:
-                    assignments[days[i]] = {'s1': best_pair['s2'], 's2': best_pair['s1']}
-            assignments[days[-1]] = {'s1': best_pair['s2'], 's2': best_pair['s1']}
-    else:
-        # Regular block: alternate S1/S2 for multi-day blocks
-        for i, d in enumerate(days):
-            if i % 2 == 0:
-                assignments[d] = {'s1': best_pair['s1'], 's2': best_pair['s2']}
-            else:
-                assignments[d] = {'s1': best_pair['s2'], 's2': best_pair['s1']}
+    for d in sorted(bloco['days']):
+        _registrar_oportunidades_do_dia(d, local_stats)
+        gerente = encontrar_melhor_gerente(d, bloco['type'], local_stats, temp_assignments)
+        if not gerente:
+            return None
+        assignments[d] = {'s1': gerente, 's2': None}
+        temp_assignments[d] = gerente
+        _registrar_atribuicao(gerente, d, bloco['type'], local_stats)
 
-    best_pair['_assignments'] = assignments
-    return best_pair
+    return {'s1': None, 's2': None, '_assignments': assignments}
 
 
 # ─── Scale Generation ────────────────────────────────────────────────────────
@@ -649,7 +636,6 @@ def gerar_escala_mensal(ano, mes, preservar_manuais=True, usuario_log=None, forc
         return 0, [f'Mês {mes:02d}/{ano} está fechado e não pode ser alterado.']
 
     blocos = get_blocos_cobertura(ano, mes)
-    stats_cache = build_stats_cache()
 
     # Collect manual assignments to preserve
     manuais = {}
@@ -663,6 +649,8 @@ def gerar_escala_mensal(ano, mes, preservar_manuais=True, usuario_log=None, forc
     EscalaDia.objects.filter(
         data__year=ano, data__month=mes, status='AUTOMATICA'
     ).delete()
+
+    stats_cache = build_stats_cache()
 
     criados = 0
     erros = []
@@ -707,22 +695,12 @@ def gerar_escala_mensal(ano, mes, preservar_manuais=True, usuario_log=None, forc
                             }
                         )
                         criados += 1
+                        _registrar_oportunidades_do_dia(d, stats_cache)
                         if assign['s1']:
-                            stats_cache.setdefault(assign['s1'].id, {})['plantoes'] = stats_cache.get(assign['s1'].id, {}).get('plantoes', 0) + 1
-                            stats_cache.setdefault(assign['s1'].id, {})['s1'] = stats_cache.get(assign['s1'].id, {}).get('s1', 0) + 1
-                        if assign['s2']:
-                            stats_cache.setdefault(assign['s2'].id, {})['plantoes'] = stats_cache.get(assign['s2'].id, {}).get('plantoes', 0) + 1
-                            stats_cache.setdefault(assign['s2'].id, {})['s2'] = stats_cache.get(assign['s2'].id, {}).get('s2', 0) + 1
+                            _registrar_atribuicao(assign['s1'], d, bloco['type'], stats_cache)
 
-                        if bloco['type'] == 'FERIADAO':
-                            if assign['s1']:
-                                assign['s1'].feriadao_s1_count += 1
-                                assign['s1'].save(update_fields=['feriadao_s1_count'])
-                            if assign['s2']:
-                                assign['s2'].feriadao_s2_count += 1
-                                assign['s2'].save(update_fields=['feriadao_s2_count'])
                 else:
-                    erros.append(f'Sem par disponível para bloco {bloco["nome"]} ({sr[0]} a {sr[-1]})')
+                    erros.append(f'Sem gerente disponível para {bloco["nome"]} ({sr[0]} a {sr[-1]})')
             continue
 
         # Full block uncovered
@@ -743,22 +721,12 @@ def gerar_escala_mensal(ano, mes, preservar_manuais=True, usuario_log=None, forc
                     }
                 )
                 criados += 1
+                _registrar_oportunidades_do_dia(d, stats_cache)
                 if assign['s1']:
-                    stats_cache.setdefault(assign['s1'].id, {})['plantoes'] = stats_cache.get(assign['s1'].id, {}).get('plantoes', 0) + 1
-                    stats_cache.setdefault(assign['s1'].id, {})['s1'] = stats_cache.get(assign['s1'].id, {}).get('s1', 0) + 1
-                if assign['s2']:
-                    stats_cache.setdefault(assign['s2'].id, {})['plantoes'] = stats_cache.get(assign['s2'].id, {}).get('plantoes', 0) + 1
-                    stats_cache.setdefault(assign['s2'].id, {})['s2'] = stats_cache.get(assign['s2'].id, {}).get('s2', 0) + 1
+                    _registrar_atribuicao(assign['s1'], d, bloco['type'], stats_cache)
 
-                if bloco['type'] == 'FERIADAO':
-                    if assign['s1']:
-                        assign['s1'].feriadao_s1_count += 1
-                        assign['s1'].save(update_fields=['feriadao_s1_count'])
-                    if assign['s2']:
-                        assign['s2'].feriadao_s2_count += 1
-                        assign['s2'].save(update_fields=['feriadao_s2_count'])
         else:
-            erros.append(f'Sem par disponível para bloco {bloco["nome"]} ({bloco["days"][0]} a {bloco["days"][-1]})')
+            erros.append(f'Sem gerente disponível para {bloco["nome"]} ({bloco["days"][0]} a {bloco["days"][-1]})')
 
     # Update user counters
     _atualizar_contadores_usuarios()
@@ -870,14 +838,14 @@ def analisar_impacto_ferias(bloqueio):
     inicio = bloqueio.data_inicio
     fim = bloqueio.data_fim
 
-    # Find scale days where this user is S1 or S2 in the period
+    # Find scale days where this user is on call in the period
     dias_afetados = EscalaDia.objects.filter(
-        data__gte=inicio, data__lte=fim
-    ).filter(dm.Q(s1=usuario) | dm.Q(s2=usuario))
+        data__gte=inicio, data__lte=fim, s1=usuario
+    )
 
-    # Count by role
+    # Count single-role assignments
     s1_afetados = dias_afetados.filter(s1=usuario).count()
-    s2_afetados = dias_afetados.filter(s2=usuario).count()
+    s2_afetados = 0
 
     # Find coverage blocks in the period
     blocos_afetados = EscalaBloco.objects.filter(
@@ -904,13 +872,9 @@ def analisar_impacto_ferias(bloqueio):
     else:
         alertas.append(f'{s1_afetados + s2_afetados} dias de escala precisarão ser redistribuídos.')
 
-    # Get available users who can cover
-    disponiveis_a = UsuarioEscala.objects.filter(ativo=True, grupo__nome='A').exclude(id=usuario.id).count()
-    disponiveis_b = UsuarioEscala.objects.filter(ativo=True, grupo__nome='B').exclude(id=usuario.id).count()
-    if disponiveis_a == 0:
-        alertas.append('⚠️ Nenhum usuário disponível no Grupo A para cobrir o período!')
-    if disponiveis_b == 0:
-        alertas.append('⚠️ Nenhum usuário disponível no Grupo B para cobrir o período!')
+    disponiveis = UsuarioEscala.objects.filter(ativo=True).exclude(id=usuario.id).count()
+    if disponiveis == 0:
+        alertas.append('Nenhum outro gerente ativo disponível para cobrir o período.')
 
     return {
         'usuario': usuario.nome,
@@ -920,8 +884,9 @@ def analisar_impacto_ferias(bloqueio):
         's2_afetados': s2_afetados,
         'blocos_afetados': blocos_afetados.count(),
         'meses_fechados': meses_fechados,
-        'disponiveis_grupo_a': disponiveis_a,
-        'disponiveis_grupo_b': disponiveis_b,
+        'disponiveis': disponiveis,
+        'disponiveis_grupo_a': disponiveis,
+        'disponiveis_grupo_b': 0,
         'alertas': alertas,
     }
 
@@ -929,26 +894,22 @@ def analisar_impacto_ferias(bloqueio):
 # ─── Counter Update ──────────────────────────────────────────────────────────
 
 def _atualizar_contadores_usuarios():
-    """Recalculate user PL, S1, S2 counters from EscalaDia."""
+    """Recalculate user counters using the single on-call assignment."""
     for u in UsuarioEscala.objects.filter(ativo=True):
         u.total_s1 = EscalaDia.objects.filter(s1=u).count()
-        u.total_s2 = EscalaDia.objects.filter(s2=u).count()
-        u.total_dias_trabalhados = u.total_s1
-        u.total_dias_sobreaviso = u.total_s2
-        u.total_feriados = EscalaDia.objects.filter(
-            dm.Q(s1=u) | dm.Q(s2=u), feriado=True
-        ).count()
-        u.total_feriadoes = EscalaDia.objects.filter(
-            dm.Q(s1=u) | dm.Q(s2=u), feriadao=True
-        ).count()
-        ultima = EscalaDia.objects.filter(
-            dm.Q(s1=u) | dm.Q(s2=u)
-        ).order_by('-data').first()
+        u.total_s2 = 0
+        u.total_dias_trabalhados = 0
+        u.total_dias_sobreaviso = u.total_s1
+        u.total_feriados = EscalaDia.objects.filter(s1=u, feriado=True).count()
+        u.total_feriadoes = EscalaDia.objects.filter(s1=u, feriadao=True).count()
+        u.feriadao_s1_count = u.total_feriadoes
+        u.feriadao_s2_count = 0
+        ultima = EscalaDia.objects.filter(s1=u).order_by('-data').first()
         u.ultima_escala = ultima.data if ultima else None
         u.save(update_fields=[
             'total_s1', 'total_s2', 'total_dias_trabalhados',
             'total_dias_sobreaviso', 'total_feriados', 'total_feriadoes',
-            'ultima_escala',
+            'feriadao_s1_count', 'feriadao_s2_count', 'ultima_escala',
         ])
 
 
@@ -958,46 +919,25 @@ def validar_dia(data, s1, s2):
     """Validate a day assignment. Returns list of warnings/errors."""
     problemas = []
 
-    if s1 and s2 and s1.grupo_id == s2.grupo_id:
+    usuario = s1
+    if not usuario:
+        return problemas
+
+    bloqueado = BloqueioUsuario.objects.filter(
+        usuario=usuario, data_inicio__lte=data, data_fim__gte=data
+    ).first()
+    if bloqueado:
         problemas.append({
             'tipo': 'erro',
-            'msg': f'Dupla inválida: {s1.nome} e {s2.nome} são do mesmo grupo.'
+            'msg': f'{usuario.nome} está indisponível: {bloqueado.get_tipo_display()} até {bloqueado.data_fim}.'
         })
 
-    for usuario, role in [(s1, 'S1'), (s2, 'S2')]:
-        if not usuario:
-            continue
-        bloqueado = BloqueioUsuario.objects.filter(
-            usuario=usuario, data_inicio__lte=data, data_fim__gte=data
-        ).first()
-        if bloqueado:
+    for adj in (data - timedelta(days=1), data + timedelta(days=1)):
+        escala_adj = EscalaDia.objects.filter(data=adj, s1=usuario).first()
+        if escala_adj:
             problemas.append({
                 'tipo': 'erro',
-                'msg': f'{usuario.nome} ({role}) está bloqueado: {bloqueado.get_tipo_display()} até {bloqueado.data_fim}.'
-            })
-
-        # Check proximity to blocks
-        margem = 3
-        prox_inicio = BloqueioUsuario.objects.filter(
-            usuario=usuario,
-            data_inicio__gte=data,
-            data_inicio__lte=data + timedelta(days=margem),
-        ).first()
-        if prox_inicio:
-            problemas.append({
-                'tipo': 'alerta',
-                'msg': f'{usuario.nome} ({role}) tem {prox_inicio.get_tipo_display()} começando em {prox_inicio.data_inicio}.'
-            })
-
-        prox_fim = BloqueioUsuario.objects.filter(
-            usuario=usuario,
-            data_fim__gte=data - timedelta(days=margem),
-            data_fim__lte=data,
-        ).first()
-        if prox_fim:
-            problemas.append({
-                'tipo': 'alerta',
-                'msg': f'{usuario.nome} ({role}) teve {prox_fim.get_tipo_display()} terminando em {prox_fim.data_fim}.'
+                'msg': f'{usuario.nome} já está em sobreaviso em {adj}. Não é permitido repetir dois dias seguidos.'
             })
 
     return problemas
@@ -1019,24 +959,22 @@ def get_relatorio_usuarios(ano=None, mes=None):
 
     relatorio = []
     for u in usuarios:
-        escalas = EscalaDia.objects.filter(filtro).filter(dm.Q(s1=u) | dm.Q(s2=u))
+        escalas = EscalaDia.objects.filter(filtro, s1=u)
         s1_count = escalas.filter(s1=u).count()
-        s2_count = escalas.filter(s2=u).count()
-        ferias_dias = BloqueioUsuario.objects.filter(
-            usuario=u, tipo='FERIAS',
-        ).aggregate(
-            total=dm.Sum(dm.F('data_fim') - dm.F('data_inicio') + 1)
-        )['total'] or 0
+        s2_count = 0
+        ferias_dias = 0
+        for blk in BloqueioUsuario.objects.filter(usuario=u, tipo='FERIAS'):
+            ferias_dias += (blk.data_fim - blk.data_inicio).days + 1
 
         relatorio.append({
             'usuario': u,
             'grupo': u.grupo.nome,
-            'pl_total': u.pl_inicial + s1_count + s2_count,
-            's1': u.total_s1,
+            'pl_total': s1_count,
+            's1': s1_count,
             's2': u.total_s2,
             'ferias_dias': ferias_dias,
-            'feriadao_s1': u.feriadao_s1_count,
-            'feriadao_s2': u.feriadao_s2_count,
+            'feriadao_s1': escalas.filter(feriadao=True).count(),
+            'feriadao_s2': 0,
             'ultima_escala': u.ultima_escala,
         })
 
@@ -1044,76 +982,42 @@ def get_relatorio_usuarios(ano=None, mes=None):
 
 
 def get_alertas_desequilibrio():
-    """
-    Detect workload imbalance and explain the cause.
-    All alerts include the reason so users understand whether it's
-    structural (group size difference), by design (feriadão block),
-    or something that needs attention.
-    """
+    """Detect relevant workload issues under the single on-call rule."""
     alertas = []
+    usuarios = list(UsuarioEscala.objects.filter(ativo=True).select_related('grupo'))
+    if not usuarios:
+        return alertas
 
-    for grupo in GrupoEscala.objects.all():
-        usuarios = list(UsuarioEscala.objects.filter(ativo=True, grupo=grupo))
-        if len(usuarios) < 2:
-            continue
+    stats = build_stats_cache()
+    cargas = []
+    for u in usuarios:
+        s = stats.get(u.id, {})
+        oportunidades = s.get('oportunidades', 0)
+        plantoes = s.get('plantoes', 0)
+        if oportunidades:
+            cargas.append((u, plantoes, oportunidades, plantoes / oportunidades))
 
-        # PL comparison within group
-        plantoes = []
-        for u in usuarios:
-            gen = EscalaDia.objects.filter(dm.Q(s1=u) | dm.Q(s2=u)).count()
-            plantoes.append((u, u.pl_inicial + gen))
-
-        plantoes.sort(key=lambda x: x[1])
-        menor = plantoes[0]
-        maior = plantoes[-1]
-        diff = maior[1] - menor[1]
-
-        if diff > 4:
-            alertas.append(
-                f'Grupo {grupo.nome}: {maior[0].nome} tem {diff} plantoes a mais '
-                f'que {menor[0].nome}. Causa: diferença no PL inicial da planilha '
-                f'({maior[0].nome} PL={maior[0].pl_inicial} vs {menor[0].nome} PL={menor[0].pl_inicial}). '
-                f'O algoritmo está redistribuindo gradualmente.'
-            )
-
-        # Consecutive days — show both feriadão and regular
-        for u in usuarios:
-            escalas = EscalaDia.objects.filter(
-                dm.Q(s1=u) | dm.Q(s2=u)
-            ).order_by('data')
-
-            consecutivas = 0
-            max_consec = 0
-            max_consec_info = ''
-            prev_data = None
-
-            for ed in escalas:
-                if prev_data and (ed.data - prev_data).days == 1:
-                    consecutivas += 1
-                    if consecutivas > max_consec:
-                        max_consec = consecutivas
-                        max_consec_info = 'feriadão' if ed.feriadao else 'fins de semana seguidos'
-                else:
-                    consecutivas = 1
-                prev_data = ed.data
-
-            if max_consec >= 4:
+        escalas = EscalaDia.objects.filter(s1=u).order_by('data')
+        prev_data = None
+        for ed in escalas:
+            if prev_data and (ed.data - prev_data).days == 1:
                 alertas.append(
-                    f'{u.nome} tem {max_consec} dias consecutivos com escala '
-                    f'({max_consec_info}). '
-                    f'{"Isso é esperado — regra do feriadão." if "feriadão" in max_consec_info else "Verificar se há alternativa."}'
+                    f'{u.nome} está escalado em dias consecutivos ({prev_data} e {ed.data}).'
                 )
+                break
+            prev_data = ed.data
 
-    # Cross-group explanation
-    ga = UsuarioEscala.objects.filter(ativo=True, grupo__nome='A').count()
-    gb = UsuarioEscala.objects.filter(ativo=True, grupo__nome='B').count()
-    if ga != gb:
-        alertas.append(
-            f'Grupo A: {ga} pessoas, Grupo B: {gb} pessoas. '
-            f'Toda escala exige 1A+1B, então cada pessoa do Grupo B '
-            f'naturalmente pega ~{round((ga/gb - 1) * 100)}% mais plantões. '
-            f'Isso é estrutural, não um erro de distribuição.'
-        )
+    if len(cargas) >= 2:
+        cargas.sort(key=lambda item: item[3])
+        menor = cargas[0]
+        maior = cargas[-1]
+        if maior[3] - menor[3] > 0.25 and maior[1] - menor[1] > 2:
+            alertas.append(
+                f'Desequilíbrio de sobreaviso: {maior[0].nome} tem {maior[1]} plantões '
+                f'em {maior[2]} dias disponíveis, enquanto {menor[0].nome} tem '
+                f'{menor[1]} em {menor[2]}. Férias reduzem os dias disponíveis e não '
+                f'são compensadas como dívida.'
+            )
 
     return alertas
 
@@ -1126,11 +1030,11 @@ def _count_user_days_in_range(usuario, inicio, fim):
     Returns dict with all breakdown columns for the summary table.
     """
     escalas = EscalaDia.objects.filter(
-        data__gte=inicio, data__lte=fim
-    ).filter(dm.Q(s1=usuario) | dm.Q(s2=usuario))
+        data__gte=inicio, data__lte=fim, s1=usuario
+    )
 
     total_s1 = escalas.filter(s1=usuario).count()
-    total_s2 = escalas.filter(s2=usuario).count()
+    total_s2 = 0
 
     # By day type
     sabados = escalas.filter(
@@ -1157,10 +1061,18 @@ def _count_user_days_in_range(usuario, inicio, fim):
         else:
             bloqueios_dias += dias
 
+    dias_cobertura = list(
+        EscalaDia.objects.filter(
+            data__gte=inicio, data__lte=fim, s1__isnull=False
+        ).values_list('data', flat=True).distinct()
+    )
+    dias_disponiveis = sum(1 for d in dias_cobertura if _usuario_disponivel(usuario, d))
+
     return {
         'usuario': usuario,
         'grupo': usuario.grupo.nome,
-        'total_plantoes': total_s1 + total_s2,
+        'total_plantoes': total_s1,
+        'dias_disponiveis': dias_disponiveis,
         'sabados': sabados,
         'domingos': domingos,
         'feriados': feriados,

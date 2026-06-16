@@ -1,29 +1,28 @@
-{% extends "base.html" %}{% block title %}Exportar — Escala{% endblock %}{% block page_title %}Exportar Dados{% endblock %}
+{% extends "base.html" %}
+{% block title %}Exportar - Escala{% endblock %}
+{% block page_title %}Exportar{% endblock %}
+
 {% block content %}
 <div class="row g-3">
-  <div class="col-md-4"><div class="card text-center"><div class="card-body py-4">
-    <i class="bi bi-filetype-csv display-4 text-success"></i>
-    <h5 class="mt-2">Escala Mensal (CSV)</h5><p class="text-muted small">Todos os dias do mês: S1, S2, tipo de dia.</p>
-    <a href="{% url 'exportar_csv' %}" class="btn btn-success btn-sm"><i class="bi bi-download"></i> Exportar</a>
-  </div></div></div>
-  <div class="col-md-4"><div class="card text-center"><div class="card-body py-4">
-    <i class="bi bi-table display-4 text-primary"></i>
-    <h5 class="mt-2">Resumo Mensal (CSV)</h5><p class="text-muted small">Tabela com totais por usuário no mês: S1, S2, sáb, dom, feriados, férias.</p>
-    <a href="{% url 'exportar_resumo_csv' %}?tipo=mensal" class="btn btn-primary btn-sm"><i class="bi bi-download"></i> Exportar</a>
-  </div></div></div>
-  <div class="col-md-4"><div class="card text-center"><div class="card-body py-4">
-    <i class="bi bi-file-earmark-bar-graph display-4 text-info"></i>
-    <h5 class="mt-2">Resumo Anual (CSV)</h5><p class="text-muted small">Tabela com totais por usuário no ano inteiro.</p>
-    <a href="{% url 'exportar_resumo_csv' %}?tipo=anual" class="btn btn-info btn-sm"><i class="bi bi-download"></i> Exportar</a>
-  </div></div></div>
-  <div class="col-md-4"><div class="card text-center"><div class="card-body py-4">
-    <i class="bi bi-database display-4 text-secondary"></i>
-    <h5 class="mt-2">Backup via Admin</h5><p class="text-muted small">Use o Django Admin para exportar dados completos em JSON ou fixtures.</p>
-    <a href="{% url 'admin:index' %}" class="btn btn-secondary btn-sm"><i class="bi bi-gear"></i> Abrir Admin</a>
-  </div></div></div>
-  <div class="col-md-4"><div class="card text-center"><div class="card-body py-4">
-    <i class="bi bi-printer display-4 text-secondary"></i>
-    <h5 class="mt-2">Imprimir</h5><p class="text-muted small">Abra o calendário e pressione Ctrl+P para imprimir.</p>
-    <a href="{% url 'calendario' %}" class="btn btn-secondary btn-sm"><i class="bi bi-calendar-month"></i> Calendário</a>
-  </div></div></div>
-</div>{% endblock %}
+  <div class="col-md-6">
+    <div class="card h-100">
+      <div class="card-body text-center">
+        <i class="bi bi-filetype-csv display-4 text-success"></i>
+        <h5 class="mt-2">Escala Mensal (CSV)</h5>
+        <p class="text-muted small">Todos os dias do mes com tipo de dia e gerente de sobreaviso.</p>
+        <a href="{% url 'exportar_csv' %}" class="btn btn-success"><i class="bi bi-download"></i> Baixar CSV</a>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-6">
+    <div class="card h-100">
+      <div class="card-body text-center">
+        <i class="bi bi-table display-4 text-primary"></i>
+        <h5 class="mt-2">Resumo Mensal (CSV)</h5>
+        <p class="text-muted small">Totais por usuario: sobreavisos, dias disponiveis, fins de semana, feriados, ferias e bloqueios.</p>
+        <a href="{% url 'exportar_resumo_csv' %}" class="btn btn-primary"><i class="bi bi-download"></i> Baixar Resumo</a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,6 +1,8 @@
 """
 Models for the Escala de Sobreaviso system.
 """
+from datetime import timedelta
+
 from django.conf import settings
 from django.db import models
 
@@ -166,25 +168,23 @@ class EscalaDia(models.Model):
         ordering = ['data']
 
     def __str__(self):
-        s1_n = self.s1.nome if self.s1 else '—'
-        s2_n = self.s2.nome if self.s2 else '—'
-        return f'{self.data} | S1: {s1_n} | S2: {s2_n}'
+        gerente = self.s1.nome if self.s1 else '---'
+        return f'{self.data} | Sobreaviso: {gerente}'
 
     @property
     def tem_conflito(self):
-        if self.s1 and self.s2 and self.s1.grupo_id == self.s2.grupo_id:
-            return True
         if self.s1:
             bloqueado = self.s1.bloqueios.filter(
                 models.Q(data_inicio__lte=self.data) & models.Q(data_fim__gte=self.data)
             ).exists()
             if bloqueado:
                 return True
-        if self.s2:
-            bloqueado = self.s2.bloqueios.filter(
-                models.Q(data_inicio__lte=self.data) & models.Q(data_fim__gte=self.data)
-            ).exists()
-            if bloqueado:
+            adjacente = EscalaDia.objects.filter(
+                models.Q(data=self.data - timedelta(days=1)) |
+                models.Q(data=self.data + timedelta(days=1)),
+                s1=self.s1,
+            ).exclude(pk=self.pk).exists()
+            if adjacente:
                 return True
         return False
 

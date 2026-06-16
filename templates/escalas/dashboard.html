@@ -43,21 +43,10 @@
       <div class="card-header"><i class="bi bi-calendar-check text-primary"></i> Escala de Hoje — {{ hoje|date:"d/m/Y" }}</div>
       <div class="card-body">
         {% if escala_hoje %}
-          <div class="row g-3">
-            <div class="col-6">
-              <div class="p-3 rounded" style="background:var(--color-s1-light)">
-                <div style="font-size:.7rem;font-weight:600;color:var(--color-s1-text);text-transform:uppercase">S1 · Trabalha</div>
-                <div style="font-weight:700;font-size:1rem;color:var(--color-s1-text)">{{ escala_hoje.s1.nome|default:"—" }}</div>
-                <div style="font-size:.7rem;color:var(--color-s1-text);opacity:.7">Grupo {{ escala_hoje.s1.grupo.nome|default:"—" }}</div>
-              </div>
-            </div>
-            <div class="col-6">
-              <div class="p-3 rounded" style="background:var(--color-s2-light)">
-                <div style="font-size:.7rem;font-weight:600;color:var(--color-s2-text);text-transform:uppercase">S2 · Sobreaviso</div>
-                <div style="font-weight:700;font-size:1rem;color:var(--color-s2-text)">{{ escala_hoje.s2.nome|default:"—" }}</div>
-                <div style="font-size:.7rem;color:var(--color-s2-text);opacity:.7">Grupo {{ escala_hoje.s2.grupo.nome|default:"—" }}</div>
-              </div>
-            </div>
+          <div class="p-3 rounded" style="background:var(--color-s1-light)">
+            <div style="font-size:.7rem;font-weight:600;color:var(--color-s1-text);text-transform:uppercase">Sobreaviso</div>
+            <div style="font-weight:700;font-size:1.1rem;color:var(--color-s1-text)">{{ escala_hoje.s1.nome|default:"---" }}</div>
+            <div style="font-size:.7rem;color:var(--color-s1-text);opacity:.7">Grupo {{ escala_hoje.s1.grupo.nome|default:"---" }}</div>
           </div>
           {% if escala_hoje.tem_conflito %}
             <div class="alert alert-danger mt-3 mb-0 py-2 small"><i class="bi bi-x-circle"></i> Conflito detectado nesta escala</div>
@@ -149,8 +138,7 @@
       <div class="card-header"><i class="bi bi-palette text-primary"></i> Legenda</div>
       <div class="card-body">
         <div class="legend">
-          <div class="legend-item"><span class="legend-swatch" style="background:var(--color-s1)"></span> S1 · Trabalha</div>
-          <div class="legend-item"><span class="legend-swatch" style="background:var(--color-s2)"></span> S2 · Sobreaviso</div>
+          <div class="legend-item"><span class="legend-swatch" style="background:var(--color-s1)"></span> Sobreaviso</div>
           <div class="legend-item"><span class="legend-swatch" style="background:var(--color-ferias)"></span> Férias</div>
           <div class="legend-item"><span class="legend-swatch" style="background:var(--color-bloqueio)"></span> Indisponível</div>
           <div class="legend-item"><span class="legend-swatch" style="background:var(--color-feriado)"></span> Feriado</div>

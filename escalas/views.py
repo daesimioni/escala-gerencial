@@ -26,7 +26,8 @@ from .models import (
 from .services import (
     analisar_impacto_ferias, fechar_mes, gerar_escala_mensal,
     gerar_escala_anual, gerar_escala_periodo, get_alertas_desequilibrio,
-    get_blocos_cobertura, get_meses_fechados, get_relatorio_usuarios,
+    calcular_resumo_anual, calcular_resumo_mensal, get_blocos_cobertura,
+    get_meses_fechados, get_relatorio_usuarios,
     is_mes_fechado, reabrir_mes, regenerar_apos_data,
     validar_dia, _atualizar_contadores_usuarios,
 )
@@ -529,25 +530,65 @@ def relatorios(request):
     ano = request.GET.get('ano', str(date.today().year))
     mes = request.GET.get('mes', '')
 
-    filtro_ano = int(ano) if ano else None
+    filtro_ano = int(ano) if ano else date.today().year
     filtro_mes = int(mes) if mes else None
 
-    relatorio = get_relatorio_usuarios(filtro_ano, filtro_mes)
+    if filtro_mes:
+        relatorio = calcular_resumo_mensal(filtro_ano, filtro_mes)
+    else:
+        relatorio = calcular_resumo_anual(filtro_ano)
+
+    relatorio = list(relatorio)
+    relatorio.sort(key=lambda row: row['percentual_carga'], reverse=True)
+
+    max_carga = max((row['percentual_carga'] for row in relatorio), default=0)
+    max_total = max((row['total_plantoes'] for row in relatorio), default=0)
+    max_ausencias = max((row['ferias_dias'] + row['bloqueios_dias'] for row in relatorio), default=0)
+
+    for row in relatorio:
+        row['bar_carga'] = round((row['percentual_carga'] / max(max_carga, 1)) * 100, 1)
+        row['bar_total'] = round((row['total_plantoes'] / max(max_total, 1)) * 100, 1)
+        row['total_ausencias'] = row['ferias_dias'] + row['bloqueios_dias']
+        row['bar_ausencias'] = round((row['total_ausencias'] / max(max_ausencias, 1)) * 100, 1)
+
+    com_disponibilidade = [row for row in relatorio if row['dias_disponiveis'] > 0]
+    maior_carga = max(com_disponibilidade, key=lambda row: row['percentual_carga'], default=None)
+    menor_carga = min(com_disponibilidade, key=lambda row: row['percentual_carga'], default=None)
+    media_carga = (
+        sum(row['percentual_carga'] for row in com_disponibilidade) / len(com_disponibilidade)
+        if com_disponibilidade else 0
+    )
+    variacao_carga = (
+        maior_carga['percentual_carga'] - menor_carga['percentual_carga']
+        if maior_carga and menor_carga else 0
+    )
+
+    resumo_geral = {
+        'total_sobreavisos': sum(row['total_plantoes'] for row in relatorio),
+        'total_feriados': sum(row['feriados'] + row['feriadoes'] for row in relatorio),
+        'total_ferias': sum(row['ferias_dias'] for row in relatorio),
+        'media_carga': media_carga,
+        'variacao_carga': variacao_carga,
+        'maior_carga': maior_carga,
+        'menor_carga': menor_carga,
+    }
     alertas = get_alertas_desequilibrio()
 
-    meses_nomes = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
-                   'Julho','Agosto','Setembro','Outubro','Novembro','Dezembro']
+    meses_nomes = ['Janeiro', 'Fevereiro', 'Marco', 'Abril', 'Maio', 'Junho',
+                   'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro']
     meses_disponiveis = [(i, meses_nomes[i-1]) for i in range(1, 13)]
+    periodo_label = meses_nomes[filtro_mes - 1] if filtro_mes else 'Ano completo'
 
     return render(request, 'escalas/relatorios.html', {
         'relatorio': relatorio,
+        'resumo_geral': resumo_geral,
         'alertas': alertas,
         'ano': filtro_ano,
         'mes': filtro_mes,
+        'periodo_label': periodo_label,
         'anos_disponiveis': range(2025, 2031),
         'meses_disponiveis': meses_disponiveis,
     })
-
 
 @login_required
 def exportar_csv(request):

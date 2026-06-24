@@ -149,6 +149,22 @@ class ScaleGenerationTests(TestCase):
         )
         self.assertLessEqual(total_ferias, maior_outro)
 
+    def test_feriados_nacional_municipal_estadual_tem_sobreaviso(self):
+        for ano, mes in [(2026, 9), (2026, 12)]:
+            gerar_escala_mensal(ano, mes, False)
+
+        datas_feriado = [
+            date(2026, 9, 7),   # Independencia do Brasil
+            date(2026, 9, 8),   # Nossa Senhora da Luz dos Pinhais - Curitiba
+            date(2026, 12, 19), # Emancipacao Politica do Parana
+        ]
+        for data_feriado in datas_feriado:
+            with self.subTest(data=data_feriado):
+                escala = EscalaDia.objects.filter(data=data_feriado).first()
+                self.assertIsNotNone(escala)
+                self.assertIsNotNone(escala.s1)
+                self.assertIsNone(escala.s2)
+
 
 class AvailabilityTests(TestCase):
     def setUp(self):

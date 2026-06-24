@@ -7,18 +7,195 @@
   <div class="col-auto">
     <label class="form-label small">Ano</label>
     <select name="ano" class="form-select form-select-sm">
-      {% for a in anos_disponiveis %}<option value="{{ a }}" {% if a == ano %}selected{% endif %}>{{ a }}</option>{% endfor %}
+      {% for a in anos_disponiveis %}
+        <option value="{{ a }}" {% if a == ano %}selected{% endif %}>{{ a }}</option>
+      {% endfor %}
     </select>
   </div>
   <div class="col-auto">
-    <label class="form-label small">Mes</label>
+    <label class="form-label small">Periodo</label>
     <select name="mes" class="form-select form-select-sm">
-      {% for m_val, m_nome in meses_disponiveis %}<option value="{{ m_val }}" {% if mes == m_val %}selected{% endif %}>{{ m_nome }}</option>{% endfor %}
+      <option value="" {% if not mes %}selected{% endif %}>Ano completo</option>
+      {% for m_val, m_nome in meses_disponiveis %}
+        <option value="{{ m_val }}" {% if mes == m_val %}selected{% endif %}>{{ m_nome }}</option>
+      {% endfor %}
     </select>
   </div>
-  <div class="col-auto"><button type="submit" class="btn btn-primary btn-sm">Filtrar</button></div>
-  <div class="col-auto"><a href="{% url 'exportar_csv' %}?ano={{ ano }}{% if mes %}&mes={{ mes }}{% endif %}" class="btn btn-outline-success btn-sm"><i class="bi bi-filetype-csv"></i> Exportar CSV</a></div>
+  <div class="col-auto"><button type="submit" class="btn btn-primary btn-sm"><i class="bi bi-funnel"></i> Filtrar</button></div>
+  <div class="col-auto"><a href="{% url 'exportar_resumo_csv' %}?ano={{ ano }}{% if mes %}&mes={{ mes }}&tipo=mensal{% else %}&tipo=anual{% endif %}" class="btn btn-outline-success btn-sm"><i class="bi bi-filetype-csv"></i> Exportar Resumo</a></div>
 </form>
+
+<div class="report-heading mb-3">
+  <div>
+    <div class="text-muted small">Analise proporcional - {{ periodo_label }} / {{ ano }}</div>
+    <h2 class="mb-1">Equilibrio da escala</h2>
+    <p class="text-muted mb-0 small">A regra compara sobreavisos com dias disponiveis. Ferias e bloqueios reduzem oportunidades e nao viram divida.</p>
+  </div>
+</div>
+
+<div class="row g-3 mb-3">
+  <div class="col-6 col-lg-3">
+    <div class="stat-card">
+      <div class="stat-icon" style="background:var(--color-primary-light);color:var(--color-primary)"><i class="bi bi-calendar-check"></i></div>
+      <div class="stat-value">{{ resumo_geral.total_sobreavisos }}</div>
+      <div class="stat-label">Sobreavisos no periodo</div>
+    </div>
+  </div>
+  <div class="col-6 col-lg-3">
+    <div class="stat-card">
+      <div class="stat-icon" style="background:var(--color-s2-light);color:var(--color-s2-text)"><i class="bi bi-percent"></i></div>
+      <div class="stat-value">{{ resumo_geral.media_carga|floatformat:1 }}%</div>
+      <div class="stat-label">Carga media proporcional</div>
+    </div>
+  </div>
+  <div class="col-6 col-lg-3">
+    <div class="stat-card">
+      <div class="stat-icon" style="background:var(--color-feriado-light);color:var(--color-feriado-text)"><i class="bi bi-star"></i></div>
+      <div class="stat-value">{{ resumo_geral.total_feriados }}</div>
+      <div class="stat-label">Feriados e feriadoes cobertos</div>
+    </div>
+  </div>
+  <div class="col-6 col-lg-3">
+    <div class="stat-card">
+      <div class="stat-icon" style="background:var(--color-ferias-light);color:var(--color-ferias-text)"><i class="bi bi-suitcase"></i></div>
+      <div class="stat-value">{{ resumo_geral.total_ferias }}</div>
+      <div class="stat-label">Dias de ferias considerados</div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-3 mb-3">
+  <div class="col-xl-7">
+    <div class="card analysis-card">
+      <div class="card-header">
+        <i class="bi bi-bar-chart-line text-primary"></i>
+        Carga proporcional por gerente
+      </div>
+      <div class="card-body">
+        <div class="chart-note mb-3">
+          Quanto mais proximas as barras, mais equilibrada esta a escala. O calculo usa sobreavisos divididos pelos dias em que o gerente estava disponivel.
+        </div>
+        <div class="load-chart">
+          {% for row in relatorio %}
+            <div class="load-row">
+              <div class="load-label">
+                <strong>{{ row.usuario.nome }}</strong>
+                <span>{{ row.usuario.lotacao|default:"-" }} - {{ row.total_plantoes }} sobreavisos / {{ row.dias_disponiveis }} disponiveis</span>
+              </div>
+              <div class="load-track">
+                <div class="load-fill" style="width: {{ row.bar_carga|stringformat:'.1f' }}%"></div>
+              </div>
+              <div class="load-value">{{ row.percentual_carga|floatformat:1 }}%</div>
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-xl-5">
+    <div class="card analysis-card">
+      <div class="card-header">
+        <i class="bi bi-shuffle text-primary"></i>
+        Leitura da rotacao
+      </div>
+      <div class="card-body">
+        <div class="insight-list">
+          <div class="insight-item">
+            <span class="insight-icon"><i class="bi bi-arrow-up"></i></span>
+            <div>
+              <div class="insight-title">Maior carga proporcional</div>
+              <div class="insight-text">
+                {% if resumo_geral.maior_carga %}
+                  {{ resumo_geral.maior_carga.usuario.nome }} com {{ resumo_geral.maior_carga.percentual_carga|floatformat:1 }}%.
+                {% else %}
+                  Sem dados no periodo.
+                {% endif %}
+              </div>
+            </div>
+          </div>
+          <div class="insight-item">
+            <span class="insight-icon"><i class="bi bi-arrow-down"></i></span>
+            <div>
+              <div class="insight-title">Menor carga proporcional</div>
+              <div class="insight-text">
+                {% if resumo_geral.menor_carga %}
+                  {{ resumo_geral.menor_carga.usuario.nome }} com {{ resumo_geral.menor_carga.percentual_carga|floatformat:1 }}%.
+                {% else %}
+                  Sem dados no periodo.
+                {% endif %}
+              </div>
+            </div>
+          </div>
+          <div class="insight-item">
+            <span class="insight-icon"><i class="bi bi-rulers"></i></span>
+            <div>
+              <div class="insight-title">Amplitude entre extremos</div>
+              <div class="insight-text">{{ resumo_geral.variacao_carga|floatformat:1 }} ponto percentual. Ferias explicam parte da diferenca quando reduzem disponibilidade.</div>
+            </div>
+          </div>
+          <div class="insight-item">
+            <span class="insight-icon"><i class="bi bi-calendar-event"></i></span>
+            <div>
+              <div class="insight-title">Feriados</div>
+              <div class="insight-text">Feriados nacionais, estaduais do Parana e municipais de Curitiba entram como cobertura obrigatoria.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-3 mb-3">
+  <div class="col-lg-6">
+    <div class="card analysis-card">
+      <div class="card-header"><i class="bi bi-calendar-week text-primary"></i> Composicao dos sobreavisos</div>
+      <div class="card-body">
+        <div class="compact-chart">
+          {% for row in relatorio %}
+            <div class="compact-row">
+              <div class="compact-name">{{ row.usuario.nome }}</div>
+              <div class="compact-bars">
+                <span class="segment segment-sab" style="width: {% widthratio row.sabados row.total_plantoes 100 %}%"></span>
+                <span class="segment segment-dom" style="width: {% widthratio row.domingos row.total_plantoes 100 %}%"></span>
+                <span class="segment segment-fer" style="width: {% widthratio row.feriados row.total_plantoes 100 %}%"></span>
+                <span class="segment segment-feriadao" style="width: {% widthratio row.feriadoes row.total_plantoes 100 %}%"></span>
+              </div>
+              <div class="compact-total">{{ row.total_plantoes }}</div>
+            </div>
+          {% endfor %}
+        </div>
+        <div class="chart-legend mt-3">
+          <span><i class="legend-dot dot-sab"></i>Sabados</span>
+          <span><i class="legend-dot dot-dom"></i>Domingos</span>
+          <span><i class="legend-dot dot-fer"></i>Feriados</span>
+          <span><i class="legend-dot dot-feriadao"></i>Feriadoes</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-6">
+    <div class="card analysis-card">
+      <div class="card-header"><i class="bi bi-calendar-x text-primary"></i> Impacto de ferias e bloqueios</div>
+      <div class="card-body">
+        <div class="absence-chart">
+          {% for row in relatorio %}
+            <div class="absence-row">
+              <div class="absence-name">{{ row.usuario.nome }}</div>
+              <div class="absence-track">
+                <div class="absence-fill" style="width: {{ row.bar_ausencias|stringformat:'.1f' }}%"></div>
+              </div>
+              <div class="absence-value">{{ row.total_ausencias }} dias</div>
+            </div>
+          {% endfor %}
+        </div>
+        <div class="chart-note mt-3">Esses dias saem da base de oportunidades. O sistema nao tenta compensar ferias no retorno.</div>
+      </div>
+    </div>
+  </div>
+</div>
 
 <div class="table-container mb-3">
   <div class="table-responsive">
@@ -26,22 +203,34 @@
       <thead>
         <tr>
           <th>Usuario</th>
-          <th>Grp</th>
-          <th class="text-center">Total Sobreaviso</th>
+          <th>Lotacao</th>
+          <th class="text-center">Grp</th>
+          <th class="text-center">Sobreaviso</th>
+          <th class="text-center">Disponivel</th>
+          <th class="text-center">% Carga</th>
+          <th class="text-center">Sab</th>
+          <th class="text-center">Dom</th>
+          <th class="text-center">Feriados</th>
           <th class="text-center">Feriadoes</th>
-          <th class="text-center">Ferias (dias)</th>
-          <th>Ultima Escala</th>
+          <th class="text-center">Ferias</th>
+          <th class="text-center">Bloqueios</th>
         </tr>
       </thead>
       <tbody>
-        {% for r in relatorio %}
+        {% for row in relatorio %}
           <tr>
-            <td><strong>{{ r.usuario.nome }}</strong></td>
-            <td><span class="badge {% if r.grupo == 'A' %}badge-s1{% else %}badge-s2{% endif %}">{{ r.grupo }}</span></td>
-            <td class="text-center fw-bold">{{ r.pl_total }}</td>
-            <td class="text-center">{{ r.feriadao_s1 }}</td>
-            <td class="text-center">{{ r.ferias_dias }}</td>
-            <td><small>{{ r.ultima_escala|date:"d/m/Y"|default:"---" }}</small></td>
+            <td><strong>{{ row.usuario.nome }}</strong><div class="text-muted small">{{ row.usuario.telefone }}</div></td>
+            <td>{{ row.usuario.lotacao|default:"-" }}</td>
+            <td class="text-center"><span class="badge {% if row.grupo == 'A' %}badge-s1{% else %}badge-s2{% endif %}">{{ row.grupo }}</span></td>
+            <td class="text-center fw-bold">{{ row.total_plantoes }}</td>
+            <td class="text-center">{{ row.dias_disponiveis }}</td>
+            <td class="text-center">{{ row.percentual_carga|floatformat:1 }}%</td>
+            <td class="text-center">{{ row.sabados }}</td>
+            <td class="text-center">{{ row.domingos }}</td>
+            <td class="text-center">{{ row.feriados }}</td>
+            <td class="text-center">{{ row.feriadoes }}</td>
+            <td class="text-center">{{ row.ferias_dias }}</td>
+            <td class="text-center">{{ row.bloqueios_dias }}</td>
           </tr>
         {% endfor %}
       </tbody>
@@ -51,7 +240,7 @@
 
 {% if alertas %}
 <div class="card border-warning">
-  <div class="card-header bg-warning bg-opacity-10"><i class="bi bi-exclamation-triangle text-warning"></i> Alertas de Desequilibrio</div>
+  <div class="card-header bg-warning bg-opacity-10"><i class="bi bi-exclamation-triangle text-warning"></i> Alertas de desequilibrio</div>
   <div class="card-body py-2">{% for a in alertas %}<div class="small mb-1"><i class="bi bi-dot text-warning"></i> {{ a }}</div>{% endfor %}</div>
 </div>
 {% endif %}

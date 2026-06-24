@@ -1,5 +1,18 @@
 # Changelog
 
+## 2026-06-24 - Graficos e validacao de feriados
+
+- Relatorios ganharam painel visual com:
+  - carga proporcional por gerente;
+  - leitura da rotacao;
+  - composicao dos sobreavisos por sabados, domingos, feriados e feriadoes;
+  - impacto de ferias e bloqueios.
+- A tabela de relatorios agora mostra lotacao, telefone, dias disponiveis e percentual de carga.
+- Adicionado teste garantindo sobreaviso em feriados nacionais, estaduais do Parana e municipais de Curitiba.
+- Validacao local confirmou:
+  - nenhum feriado ativo futuro sem gerente;
+  - nenhuma repeticao de gerente em dias consecutivos a partir de 01/07/2026.
+
 ## 2026-06-24 - Planilha atual e redistribuicao proporcional
 
 ### Dados

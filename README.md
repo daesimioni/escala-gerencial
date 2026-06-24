@@ -49,6 +49,7 @@ O comando `python manage.py importar_planilha_atual` aplica a planilha usada com
 - Troca do gerente de sobreaviso em data especifica.
 - Cadastro de feriados e feriadoes manuais.
 - Relatorios de distribuicao, dias disponiveis, percentual de carga, ferias, bloqueios, feriados e feriadoes.
+- Graficos de carga proporcional, composicao dos sobreavisos e impacto de ferias/bloqueios.
 - Exportacao CSV da escala e dos resumos.
 - Historico de alteracoes.
 - Autenticacao obrigatoria.
@@ -137,6 +138,7 @@ Validacoes esperadas:
 - Nenhum registro gerado deve ter `s2` preenchido.
 - Nao deve haver gerente repetido em dias consecutivos a partir de `2026-07-01`.
 - Ninguem deve estar escalado durante ferias ou bloqueio.
+- Todo feriado nacional, estadual do Parana e municipal de Curitiba deve ter gerente de sobreaviso.
 - O calendario mensal deve exibir somente o gerente de sobreaviso.
 - Ferias e bloqueios nao devem aparecer como pessoas escaladas dentro da celula do calendario.
 - `daesung.com.br` deve continuar servindo a Escala VIP.

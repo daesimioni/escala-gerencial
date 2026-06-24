@@ -18,14 +18,14 @@ class GrupoEscalaAdmin(admin.ModelAdmin):
 @admin.register(UsuarioEscala)
 class UsuarioEscalaAdmin(admin.ModelAdmin):
     list_display = [
-        'nome', 'grupo', 'ativo',
-        'fer_inicial', 'pl_inicial',
+        'nome', 'codigo_legado', 'lotacao', 'telefone', 'grupo', 'ativo',
+        'fer_inicial', 'pl_inicial', 'oportunidades_iniciais',
         'total_s1', 'total_dias_sobreaviso',
         'feriadao_s1_count',
         'ultima_escala',
     ]
     list_filter = ['grupo', 'ativo']
-    search_fields = ['nome']
+    search_fields = ['nome', 'codigo_legado', 'lotacao', 'telefone']
     list_editable = ['ativo']
 
 

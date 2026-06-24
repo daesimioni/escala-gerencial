@@ -3,10 +3,11 @@
   <div class="card-header d-flex justify-content-between align-items-center">
     <span><i class="bi bi-table"></i> <strong>Resumo do Periodo</strong></span>
     <div class="d-flex gap-2">
-      <button class="btn btn-sm btn-outline-secondary" onclick="sortTable(2, 'desc')" title="Ordenar por total de sobreavisos">↓ Sobreavisos</button>
-      <button class="btn btn-sm btn-outline-secondary" onclick="sortTable(3, 'desc')" title="Ordenar por dias disponiveis">↓ Disponivel</button>
-      <button class="btn btn-sm btn-outline-secondary" onclick="sortTable(6, 'desc')" title="Ordenar por feriados">↓ Fer</button>
-      <button class="btn btn-sm btn-outline-secondary" onclick="sortTable(8, 'desc')" title="Ordenar por ferias">↓ Ferias</button>
+      <button class="btn btn-sm btn-outline-secondary" onclick="sortTable(2, 'desc')" title="Ordenar por total de sobreavisos"><i class="bi bi-sort-down"></i> Sobreavisos</button>
+      <button class="btn btn-sm btn-outline-secondary" onclick="sortTable(3, 'desc')" title="Ordenar por dias disponiveis"><i class="bi bi-sort-down"></i> Disponivel</button>
+      <button class="btn btn-sm btn-outline-secondary" onclick="sortTable(4, 'desc')" title="Ordenar por percentual de carga"><i class="bi bi-sort-down"></i> %</button>
+      <button class="btn btn-sm btn-outline-secondary" onclick="sortTable(7, 'desc')" title="Ordenar por feriados"><i class="bi bi-sort-down"></i> Fer</button>
+      <button class="btn btn-sm btn-outline-secondary" onclick="sortTable(9, 'desc')" title="Ordenar por ferias"><i class="bi bi-sort-down"></i> Ferias</button>
     </div>
   </div>
   <div class="table-responsive">
@@ -17,6 +18,7 @@
           <th class="text-center">Grp</th>
           <th class="text-center">Total Sobreaviso</th>
           <th class="text-center">Disponivel</th>
+          <th class="text-center">% Carga</th>
           <th class="text-center">Sabados</th>
           <th class="text-center">Domingos</th>
           <th class="text-center">Feriados</th>
@@ -34,6 +36,7 @@
             </td>
             <td class="text-center fw-bold">{{ row.total_plantoes }}</td>
             <td class="text-center">{{ row.dias_disponiveis }}</td>
+            <td class="text-center">{{ row.percentual_carga|floatformat:1 }}%</td>
             <td class="text-center">{{ row.sabados }}</td>
             <td class="text-center">{{ row.domingos }}</td>
             <td class="text-center">{{ row.feriados }}</td>
@@ -48,7 +51,7 @@
           <td><strong>Media</strong></td>
           <td></td>
           <td class="text-center fw-bold">{{ media_plantoes|floatformat:1 }}</td>
-          <td colspan="7" class="text-end text-muted small">
+          <td colspan="8" class="text-end text-muted small">
             Ferias reduzem os dias disponiveis e nao entram como divida de escala.
           </td>
         </tr>
@@ -67,8 +70,8 @@ function sortTable(colIndex, defaultDir) {
   table.setAttribute('data-sort-dir', dir);
 
   rows.sort((a, b) => {
-    let aVal = a.cells[colIndex].textContent.trim();
-    let bVal = b.cells[colIndex].textContent.trim();
+    let aVal = a.cells[colIndex].textContent.trim().replace('%', '');
+    let bVal = b.cells[colIndex].textContent.trim().replace('%', '');
     let aNum = parseFloat(aVal) || 0;
     let bNum = parseFloat(bVal) || 0;
     return dir === 'asc' ? aNum - bNum : bNum - aNum;

@@ -1,23 +1,26 @@
 {% extends "base.html" %}
-{% block title %}Usuários — Escala{% endblock %}
-{% block page_title %}Usuários da Escala{% endblock %}
+{% block title %}Usuarios - Escala{% endblock %}
+{% block page_title %}Usuarios da Escala{% endblock %}
 
 {% block content %}
 <div class="row g-3">
   <div class="col-lg-6">
     <div class="card">
-      <div class="card-header"><span class="badge badge-s1 me-2">Grupo A</span> Gerentes Copel 1 a 5</div>
+      <div class="card-header"><span class="badge badge-s1 me-2">Grupo A</span> Gerentes 1 a 5</div>
       <div class="list-group list-group-flush">
         {% for u in usuarios %}
           {% if u.grupo.nome == 'A' %}
             <div class="list-group-item d-flex align-items-center gap-3 {% if not u.ativo %}opacity-50{% endif %}">
               <div class="avatar-sm rounded-circle d-flex align-items-center justify-content-center fw-bold text-white flex-shrink-0"
-                   style="width:36px;height:36px;background:var(--color-s1);font-size:.75rem">{{ u.nome|slice:"-1:" }}</div>
+                   style="width:36px;height:36px;background:var(--color-s1);font-size:.75rem">{{ u.nome|slice:":1" }}</div>
               <div style="flex:1;min-width:0">
                 <div class="fw-semibold small">{{ u.nome }}</div>
+                <div class="text-muted" style="font-size:.7rem">
+                  {{ u.lotacao|default:"Sem lotacao" }}{% if u.telefone %} - {{ u.telefone }}{% endif %}
+                </div>
                 <div class="d-flex flex-wrap gap-1 mt-1">
                   <span class="badge bg-light text-dark" style="font-size:.6rem">FER {{ u.fer_inicial }}</span>
-                  <span class="badge bg-light text-dark" style="font-size:.6rem">PL {{ u.pl_inicial }}</span>
+                  <span class="badge bg-light text-dark" style="font-size:.6rem">Hist {{ u.pl_inicial }}/{{ u.oportunidades_iniciais }}</span>
                   <span class="badge badge-s1" style="font-size:.6rem">Sobreaviso {{ u.total_s1 }}</span>
                 </div>
               </div>
@@ -31,18 +34,21 @@
 
   <div class="col-lg-6">
     <div class="card">
-      <div class="card-header"><span class="badge badge-s2 me-2">Grupo B</span> Gerentes Copel 6 a 9</div>
+      <div class="card-header"><span class="badge badge-s2 me-2">Grupo B</span> Gerentes 6 a 9</div>
       <div class="list-group list-group-flush">
         {% for u in usuarios %}
           {% if u.grupo.nome == 'B' %}
             <div class="list-group-item d-flex align-items-center gap-3 {% if not u.ativo %}opacity-50{% endif %}">
               <div class="avatar-sm rounded-circle d-flex align-items-center justify-content-center fw-bold text-white flex-shrink-0"
-                   style="width:36px;height:36px;background:var(--color-s2);font-size:.75rem">{{ u.nome|slice:"-1:" }}</div>
+                   style="width:36px;height:36px;background:var(--color-s2);font-size:.75rem">{{ u.nome|slice:":1" }}</div>
               <div style="flex:1;min-width:0">
                 <div class="fw-semibold small">{{ u.nome }}</div>
+                <div class="text-muted" style="font-size:.7rem">
+                  {{ u.lotacao|default:"Sem lotacao" }}{% if u.telefone %} - {{ u.telefone }}{% endif %}
+                </div>
                 <div class="d-flex flex-wrap gap-1 mt-1">
                   <span class="badge bg-light text-dark" style="font-size:.6rem">FER {{ u.fer_inicial }}</span>
-                  <span class="badge bg-light text-dark" style="font-size:.6rem">PL {{ u.pl_inicial }}</span>
+                  <span class="badge bg-light text-dark" style="font-size:.6rem">Hist {{ u.pl_inicial }}/{{ u.oportunidades_iniciais }}</span>
                   <span class="badge badge-s1" style="font-size:.6rem">Sobreaviso {{ u.total_s1 }}</span>
                 </div>
               </div>

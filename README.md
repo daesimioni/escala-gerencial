@@ -1,137 +1,158 @@
 # Escala de Sobreaviso Gerencial
 
-Sistema Django para controle da escala gerencial dos gerentes Copel. O sistema gera e mantém uma escala de sobreaviso com apenas um gerente por dia, respeitando férias, bloqueios, feriados, feriadões e distribuição equilibrada.
+Sistema Django para controle da escala gerencial dos gerentes Copel. O sistema gera e mantem uma escala de sobreaviso com apenas um gerente por dia, respeitando ferias, bloqueios, feriados, feriadoes e distribuicao equilibrada por disponibilidade.
 
 ## Ambiente correto
 
 - Escala Gerencial beta: `https://beta.daesung.com.br`
 - Escala VIP: `https://www.daesung.com.br`
 
-Este repositório é da Escala Gerencial. O domínio principal `daesung.com.br` pertence à Escala VIP e não deve ser apontado para este projeto.
+Este repositorio e da Escala Gerencial. O dominio principal `daesung.com.br` pertence a Escala VIP e nao deve ser apontado para este projeto.
 
 ## Regras atuais
 
 - Existe apenas um gerente escalado por dia.
 - O gerente do dia fica somente de sobreaviso.
-- Não existe mais separação operacional entre `S1` e `S2`.
-- Finais de semana, feriados e feriadões não têm gerente presencial.
-- O mesmo gerente não pode ser escalado em dois dias consecutivos.
-- A distribuição deve ser a mais equilibrada possível entre os gerentes disponíveis.
-- Férias e bloqueios impedem escala no período cadastrado.
-- Férias reduzem os dias disponíveis do gerente e não criam dívida de compensação no retorno.
-- Meses fechados preservam o histórico e não são regenerados automaticamente.
+- Nao existe mais separacao operacional entre `S1` e `S2`.
+- O corte da regra nova e `2026-07-01`.
+- Janeiro a junho/2026 ficam como historico travado.
+- Os marcadores antigos `S1` e `S2` de janeiro a junho contam como plantoes historicos.
+- Finais de semana, feriados e feriadoes nao tem gerente presencial.
+- O mesmo gerente nao pode ser escalado em dois dias consecutivos a partir de `2026-07-01`.
+- A distribuicao usa a proporcao entre plantoes e oportunidades disponiveis.
+- Ferias e bloqueios impedem escala no periodo cadastrado.
+- Ferias reduzem os dias disponiveis do gerente e nao criam divida de compensacao no retorno.
+- Meses fechados preservam o historico e nao sao regenerados automaticamente.
+
+## Base da planilha atual
+
+O comando `python manage.py importar_planilha_atual` aplica a planilha usada como base em 2026:
+
+- substitui `Copel 1` a `Copel 9` pelos gerentes reais;
+- cadastra codigo legado, lotacao e telefone;
+- importa ferias e indisponibilidades da planilha;
+- contabiliza o historico de janeiro a junho/2026;
+- trava janeiro a junho/2026;
+- limpa a escala futura nao manual;
+- redistribui de julho/2026 a dezembro/2027.
+
+`seed_initial_data` continua existindo por compatibilidade, mas delega para `importar_planilha_atual`.
 
 ## Funcionalidades
 
-- Calendário mensal e visão anual.
-- Geração automática da escala de sobreaviso.
-- Cadastro de férias, faltas, treinamentos, licenças e indisponibilidades.
-- Redistribuição automática ao adicionar, editar ou remover bloqueios.
-- Edição manual de um dia de escala.
-- Troca do gerente de sobreaviso em data específica.
-- Cadastro de feriados e feriadões manuais.
-- Relatórios de distribuição, dias disponíveis, férias, bloqueios, feriados e feriadões.
-- Exportação CSV da escala e dos resumos.
-- Histórico de alterações.
-- Autenticação obrigatória.
-- Django Admin para manutenção dos dados.
+- Calendario mensal e visao anual.
+- Geracao automatica da escala de sobreaviso.
+- Cadastro de lotacao e telefone dos gerentes.
+- Cadastro de ferias, faltas, treinamentos, licencas e indisponibilidades.
+- Redistribuicao automatica ao adicionar, editar ou remover bloqueios.
+- Edicao manual de um dia de escala.
+- Troca do gerente de sobreaviso em data especifica.
+- Cadastro de feriados e feriadoes manuais.
+- Relatorios de distribuicao, dias disponiveis, percentual de carga, ferias, bloqueios, feriados e feriadoes.
+- Exportacao CSV da escala e dos resumos.
+- Historico de alteracoes.
+- Autenticacao obrigatoria.
+- Django Admin para manutencao dos dados.
 
 ## Requisitos
 
 - Python 3.12 recomendado.
 - Django 6.
 - SQLite.
-- Gunicorn para execução no servidor.
+- Gunicorn para execucao no servidor.
 
-Instalação:
+Instalacao:
 
 ```bash
 python -m venv venv
 venv\Scripts\activate
 pip install -r requirements.txt
 python manage.py migrate
-python manage.py seed_initial_data
+python manage.py importar_planilha_atual
 python manage.py createsuperuser
 python manage.py runserver
 ```
 
 ## Principais URLs
 
-| URL | Descrição |
+| URL | Descricao |
 | --- | --- |
 | `/` | Dashboard |
-| `/calendario/` | Calendário mensal |
-| `/calendario/anual/2026/` | Visão anual |
+| `/calendario/` | Calendario mensal |
+| `/calendario/anual/2026/` | Visao anual |
 | `/usuarios/` | Gerentes e totais |
-| `/bloqueios/` | Férias e indisponibilidades |
+| `/bloqueios/` | Ferias e indisponibilidades |
 | `/feriados/` | Feriados |
-| `/feriadoes/` | Feriadões |
-| `/gerar-escala/` | Geração/regeneração mensal |
+| `/feriadoes/` | Feriadoes |
+| `/gerar-escala/` | Geracao/regeneracao mensal |
 | `/trocar-escala/` | Troca de sobreaviso |
-| `/relatorios/` | Relatórios |
-| `/exportar/` | Exportações CSV |
+| `/relatorios/` | Relatorios |
+| `/exportar/` | Exportacoes CSV |
 | `/admin/` | Django Admin |
 
 ## Estrutura
 
 ```text
 Escala_Gerencial/
-├── manage.py
-├── requirements.txt
-├── README.md
-├── CHANGELOG.md
-├── core/
-│   ├── settings.py
-│   ├── urls.py
-│   └── wsgi.py
-├── escalas/
-│   ├── models.py
-│   ├── services.py
-│   ├── views.py
-│   ├── forms.py
-│   ├── admin.py
-│   ├── urls.py
-│   ├── tests.py
-│   └── management/commands/seed_initial_data.py
-├── templates/
-│   ├── base.html
-│   ├── registration/login.html
-│   └── escalas/
-└── static/
-    ├── css/estilo.css
-    └── js/calendario.js
+|-- manage.py
+|-- requirements.txt
+|-- README.md
+|-- CHANGELOG.md
+|-- core/
+|   |-- settings.py
+|   |-- urls.py
+|   `-- wsgi.py
+|-- escalas/
+|   |-- models.py
+|   |-- services.py
+|   |-- views.py
+|   |-- forms.py
+|   |-- admin.py
+|   |-- urls.py
+|   |-- tests.py
+|   `-- management/commands/
+|       |-- importar_planilha_atual.py
+|       `-- seed_initial_data.py
+|-- templates/
+|   |-- base.html
+|   |-- registration/login.html
+|   `-- escalas/
+`-- static/
+    |-- css/estilo.css
+    `-- js/calendario.js
 ```
 
-## Validação
+## Validacao
 
-Comandos usados antes de publicar alterações:
+Comandos usados antes de publicar alteracoes:
 
 ```bash
 python manage.py check
-python manage.py test escalas -v 1
+python manage.py test
 python manage.py collectstatic --noinput --clear
 ```
 
-Validações esperadas:
+Validacoes esperadas:
 
 - Nenhum registro gerado deve ter `s2` preenchido.
-- Não deve haver gerente repetido em dias consecutivos.
-- O calendário mensal deve exibir somente o gerente de sobreaviso.
-- Férias e bloqueios não devem aparecer como pessoas escaladas dentro da célula do calendário.
+- Nao deve haver gerente repetido em dias consecutivos a partir de `2026-07-01`.
+- Ninguem deve estar escalado durante ferias ou bloqueio.
+- O calendario mensal deve exibir somente o gerente de sobreaviso.
+- Ferias e bloqueios nao devem aparecer como pessoas escaladas dentro da celula do calendario.
 - `daesung.com.br` deve continuar servindo a Escala VIP.
 - `beta.daesung.com.br` deve servir a Escala Gerencial.
 
-## Produção beta
+## Producao beta
 
 No servidor:
 
 - Projeto: `/opt/escala-beta`
-- Serviço: `escala-beta.service`
+- Servico: `escala-beta.service`
 - Gunicorn: `127.0.0.1:8001`
 - Nginx: `beta.daesung.com.br`
 - Banco: `/opt/escala-beta/db.sqlite3`
 
-Antes de alterações no banco do beta, criar backup com formato:
+Antes de alteracoes no banco do beta, criar backup com formato:
 
 ```text
 /opt/escala-beta/db.sqlite3.bak_YYYYMMDDHHMMSS

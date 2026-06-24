@@ -27,10 +27,17 @@ class UsuarioEscala(models.Model):
         related_name='usuario_escala', verbose_name='Usuário Django'
     )
     nome = models.CharField(max_length=120)
+    codigo_legado = models.CharField(max_length=30, blank=True, verbose_name='Codigo legado')
+    lotacao = models.CharField(max_length=40, blank=True, verbose_name='Lotacao')
+    telefone = models.CharField(max_length=30, blank=True)
     grupo = models.ForeignKey(GrupoEscala, on_delete=models.PROTECT, related_name='usuarios')
     ativo = models.BooleanField(default=True)
     fer_inicial = models.PositiveIntegerField(default=0, verbose_name='FER inicial')
-    pl_inicial = models.PositiveIntegerField(default=0, verbose_name='PL inicial')
+    pl_inicial = models.PositiveIntegerField(default=0, verbose_name='PL ate o corte')
+    oportunidades_iniciais = models.PositiveIntegerField(
+        default=0,
+        verbose_name='Oportunidades ate o corte',
+    )
     total_s1 = models.PositiveIntegerField(default=0)
     total_s2 = models.PositiveIntegerField(default=0)
     total_dias_trabalhados = models.PositiveIntegerField(default=0)

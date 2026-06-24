@@ -1,12 +1,74 @@
-{% extends "base.html" %}{% block title %}Editar Usuário — Escala{% endblock %}{% block page_title %}Editar Usuário — {{ usuario.nome }}{% endblock %}
-{% block content %}<div class="row justify-content-center"><div class="col-lg-8"><div class="card"><div class="card-header"><i class="bi bi-person-gear"></i> Dados do Gerente</div><div class="card-body">
-<form method="post">{% csrf_token %}<div class="row g-3">
-  <div class="col-md-6"><label class="form-label">Nome</label><input type="text" name="nome" class="form-control" value="{{ usuario.nome }}" required></div>
-  <div class="col-md-3"><label class="form-label">Grupo</label><select name="grupo" class="form-select">{% for g in grupos %}<option value="{{ g.pk }}" {% if usuario.grupo_id == g.pk %}selected{% endif %}>Grupo {{ g.nome }}</option>{% endfor %}</select></div>
-  <div class="col-md-3"><label class="form-label">Status</label><div class="form-check form-switch mt-2"><input class="form-check-input" type="checkbox" name="ativo" id="ativo" {% if usuario.ativo %}checked{% endif %}><label class="form-check-label small" for="ativo">Ativo</label></div></div>
-  <div class="col-md-4"><label class="form-label">FER Inicial</label><input type="number" class="form-control" value="{{ usuario.fer_inicial }}" readonly disabled><div class="form-text small">Histórico da planilha</div></div>
-  <div class="col-md-4"><label class="form-label">PL Inicial</label><input type="number" class="form-control" value="{{ usuario.pl_inicial }}" readonly disabled><div class="form-text small">Histórico da planilha</div></div>
-  <div class="col-md-4"><label class="form-label">Última Escala</label><input type="text" class="form-control" value="{{ usuario.ultima_escala|date:'d/m/Y'|default:'Nunca' }}" readonly disabled></div>
+{% extends "base.html" %}
+{% block title %}Editar Usuario - Escala{% endblock %}
+{% block page_title %}Editar Usuario - {{ usuario.nome }}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-8">
+    <div class="card">
+      <div class="card-header"><i class="bi bi-person-gear"></i> Dados do Gerente</div>
+      <div class="card-body">
+        <form method="post">
+          {% csrf_token %}
+          <div class="row g-3">
+            <div class="col-md-8">
+              <label class="form-label">Nome</label>
+              <input type="text" name="nome" class="form-control" value="{{ usuario.nome }}" required>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">Codigo legado</label>
+              <input type="text" name="codigo_legado" class="form-control" value="{{ usuario.codigo_legado }}">
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">Lotacao</label>
+              <input type="text" name="lotacao" class="form-control" value="{{ usuario.lotacao }}">
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">Telefone</label>
+              <input type="text" name="telefone" class="form-control" value="{{ usuario.telefone }}">
+            </div>
+            <div class="col-md-2">
+              <label class="form-label">Grupo</label>
+              <select name="grupo" class="form-select">
+                {% for g in grupos %}
+                  <option value="{{ g.pk }}" {% if usuario.grupo_id == g.pk %}selected{% endif %}>{{ g.nome }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-md-2">
+              <label class="form-label">Status</label>
+              <div class="form-check form-switch mt-2">
+                <input class="form-check-input" type="checkbox" name="ativo" id="ativo" {% if usuario.ativo %}checked{% endif %}>
+                <label class="form-check-label small" for="ativo">Ativo</label>
+              </div>
+            </div>
+            <div class="col-md-3">
+              <label class="form-label">FER</label>
+              <input type="number" class="form-control" value="{{ usuario.fer_inicial }}" readonly disabled>
+              <div class="form-text small">Total da planilha</div>
+            </div>
+            <div class="col-md-3">
+              <label class="form-label">Historico PL</label>
+              <input type="number" class="form-control" value="{{ usuario.pl_inicial }}" readonly disabled>
+              <div class="form-text small">Plantao ate 30/06</div>
+            </div>
+            <div class="col-md-3">
+              <label class="form-label">Oportunidades</label>
+              <input type="number" class="form-control" value="{{ usuario.oportunidades_iniciais }}" readonly disabled>
+              <div class="form-text small">Disponibilidade ate 30/06</div>
+            </div>
+            <div class="col-md-3">
+              <label class="form-label">Ultima Escala</label>
+              <input type="text" class="form-control" value="{{ usuario.ultima_escala|date:'d/m/Y'|default:'Nunca' }}" readonly disabled>
+            </div>
+          </div>
+          <div class="mt-3">
+            <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg"></i> Salvar</button>
+            <a href="{% url 'usuarios' %}" class="btn btn-outline-secondary ms-2">Cancelar</a>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
 </div>
-<div class="mt-3"><button type="submit" class="btn btn-primary"><i class="bi bi-check-lg"></i> Salvar</button><a href="{% url 'usuarios' %}" class="btn btn-outline-secondary ms-2">Cancelar</a></div></form>
-</div></div></div></div>{% endblock %}
+{% endblock %}

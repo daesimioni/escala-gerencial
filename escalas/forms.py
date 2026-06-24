@@ -23,7 +23,8 @@ class EscalaDiaForm(forms.ModelForm):
         usuarios = UsuarioEscala.objects.filter(ativo=True).select_related('grupo')
         choices = [('', '--- Nenhum ---')]
         for u in usuarios:
-            choices.append((u.id, f'{u.nome} (Grupo {u.grupo.nome})'))
+            lotacao = f' - {u.lotacao}' if u.lotacao else ''
+            choices.append((u.id, f'{u.nome}{lotacao} (Grupo {u.grupo.nome})'))
         self.fields['s1'].choices = choices
         self.fields['s1'].required = False
 

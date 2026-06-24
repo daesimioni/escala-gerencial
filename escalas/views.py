@@ -308,7 +308,7 @@ def limpar_dia(request, ano, mes, dia):
 @login_required
 def usuarios(request):
     """List all escala users."""
-    usuarios_list = UsuarioEscala.objects.select_related('grupo').all()
+    usuarios_list = UsuarioEscala.objects.select_related('grupo').all().order_by('grupo__nome', 'codigo_legado', 'nome')
     return render(request, 'escalas/usuarios.html', {'usuarios': usuarios_list})
 
 
@@ -318,6 +318,9 @@ def editar_usuario(request, pk):
     usuario = get_object_or_404(UsuarioEscala, pk=pk)
     if request.method == 'POST':
         usuario.nome = request.POST.get('nome', usuario.nome)
+        usuario.codigo_legado = request.POST.get('codigo_legado', usuario.codigo_legado)
+        usuario.lotacao = request.POST.get('lotacao', usuario.lotacao)
+        usuario.telefone = request.POST.get('telefone', usuario.telefone)
         usuario.ativo = request.POST.get('ativo') == 'on'
         grupo_id = request.POST.get('grupo')
         if grupo_id:
@@ -618,7 +621,7 @@ def exportar_resumo_csv(request):
     writer = csv.writer(response)
     writer.writerow([
         'Usuario', 'Grupo', 'Total Sobreaviso', 'Dias Disponiveis',
-        'Sabados', 'Domingos', 'Feriados', 'Feriadoes',
+        'Percentual Carga', 'Sabados', 'Domingos', 'Feriados', 'Feriadoes',
         'Ferias (dias)', 'Bloqueios (dias)'
     ])
 
@@ -628,6 +631,7 @@ def exportar_resumo_csv(request):
             row['grupo'],
             row['total_plantoes'],
             row['dias_disponiveis'],
+            f"{row['percentual_carga']:.1f}%",
             row['sabados'],
             row['domingos'],
             row['feriados'],

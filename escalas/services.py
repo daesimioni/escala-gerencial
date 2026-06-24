@@ -16,6 +16,10 @@ from .models import (
     EscalaDia, Feriado, Feriadao, GrupoEscala, MesFechado, UsuarioEscala,
 )
 
+HISTORICO_INICIO = date(2026, 1, 1)
+HISTORICO_FIM = date(2026, 6, 30)
+DATA_CORTE_HISTORICO = date(2026, 7, 1)
+
 
 # ─── Holiday Data ───────────────────────────────────────────────────────────
 
@@ -453,8 +457,8 @@ def build_stats_cache():
     usuarios = list(UsuarioEscala.objects.filter(ativo=True))
     cache = {
         u.id: {
-            'plantoes': 0,
-            'oportunidades': 0,
+            'plantoes': u.pl_inicial,
+            'oportunidades': u.oportunidades_iniciais,
             'ultima': None,
             'fins_de_semana': 0,
             'feriados_count': 0,
@@ -463,7 +467,10 @@ def build_stats_cache():
         for u in usuarios
     }
 
-    escalas = EscalaDia.objects.filter(s1__isnull=False).select_related('s1').order_by('data')
+    escalas = EscalaDia.objects.filter(
+        data__gte=DATA_CORTE_HISTORICO,
+        s1__isnull=False,
+    ).select_related('s1').order_by('data')
     datas_com_escala = list(escalas.values_list('data', flat=True).distinct())
 
     for d in datas_com_escala:
@@ -896,12 +903,16 @@ def analisar_impacto_ferias(bloqueio):
 def _atualizar_contadores_usuarios():
     """Recalculate user counters using the single on-call assignment."""
     for u in UsuarioEscala.objects.filter(ativo=True):
-        u.total_s1 = EscalaDia.objects.filter(s1=u).count()
+        escalas_contabilizadas = EscalaDia.objects.filter(
+            s1=u,
+            data__gte=DATA_CORTE_HISTORICO,
+        )
+        u.total_s1 = u.pl_inicial + escalas_contabilizadas.count()
         u.total_s2 = 0
         u.total_dias_trabalhados = 0
         u.total_dias_sobreaviso = u.total_s1
-        u.total_feriados = EscalaDia.objects.filter(s1=u, feriado=True).count()
-        u.total_feriadoes = EscalaDia.objects.filter(s1=u, feriadao=True).count()
+        u.total_feriados = escalas_contabilizadas.filter(feriado=True).count()
+        u.total_feriadoes = escalas_contabilizadas.filter(feriadao=True).count()
         u.feriadao_s1_count = u.total_feriadoes
         u.feriadao_s2_count = 0
         ultima = EscalaDia.objects.filter(s1=u).order_by('-data').first()
@@ -956,11 +967,16 @@ def get_relatorio_usuarios(ano=None, mes=None):
         filtro &= dm.Q(data__year=ano)
     if mes:
         filtro &= dm.Q(data__month=mes)
+    inclui_historico = (not mes) and (ano is None or ano == DATA_CORTE_HISTORICO.year)
+    if inclui_historico:
+        filtro &= dm.Q(data__gte=DATA_CORTE_HISTORICO)
 
     relatorio = []
     for u in usuarios:
         escalas = EscalaDia.objects.filter(filtro, s1=u)
         s1_count = escalas.filter(s1=u).count()
+        if inclui_historico:
+            s1_count += u.pl_inicial
         s2_count = 0
         ferias_dias = 0
         for blk in BloqueioUsuario.objects.filter(usuario=u, tipo='FERIAS'):
@@ -997,7 +1013,10 @@ def get_alertas_desequilibrio():
         if oportunidades:
             cargas.append((u, plantoes, oportunidades, plantoes / oportunidades))
 
-        escalas = EscalaDia.objects.filter(s1=u).order_by('data')
+        escalas = EscalaDia.objects.filter(
+            s1=u,
+            data__gte=DATA_CORTE_HISTORICO,
+        ).order_by('data')
         prev_data = None
         for ed in escalas:
             if prev_data and (ed.data - prev_data).days == 1:
@@ -1029,11 +1048,16 @@ def _count_user_days_in_range(usuario, inicio, fim):
     Count a user's stats in a date range.
     Returns dict with all breakdown columns for the summary table.
     """
+    inclui_historico = inicio <= HISTORICO_INICIO and fim >= HISTORICO_FIM
+    data_inicio_escalas = max(inicio, DATA_CORTE_HISTORICO) if inclui_historico else inicio
+
     escalas = EscalaDia.objects.filter(
-        data__gte=inicio, data__lte=fim, s1=usuario
+        data__gte=data_inicio_escalas, data__lte=fim, s1=usuario
     )
 
     total_s1 = escalas.filter(s1=usuario).count()
+    if inclui_historico:
+        total_s1 += usuario.pl_inicial
     total_s2 = 0
 
     # By day type
@@ -1063,16 +1087,19 @@ def _count_user_days_in_range(usuario, inicio, fim):
 
     dias_cobertura = list(
         EscalaDia.objects.filter(
-            data__gte=inicio, data__lte=fim, s1__isnull=False
+            data__gte=data_inicio_escalas, data__lte=fim, s1__isnull=False
         ).values_list('data', flat=True).distinct()
     )
     dias_disponiveis = sum(1 for d in dias_cobertura if _usuario_disponivel(usuario, d))
+    if inclui_historico:
+        dias_disponiveis += usuario.oportunidades_iniciais
 
     return {
         'usuario': usuario,
         'grupo': usuario.grupo.nome,
         'total_plantoes': total_s1,
         'dias_disponiveis': dias_disponiveis,
+        'percentual_carga': (total_s1 / dias_disponiveis * 100) if dias_disponiveis else 0,
         'sabados': sabados,
         'domingos': domingos,
         'feriados': feriados,

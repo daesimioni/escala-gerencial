@@ -1,5 +1,36 @@
 # Changelog
 
+## 2026-06-24 - Planilha atual e redistribuicao proporcional
+
+### Dados
+
+- Substituidos os usuarios genericos `Copel 1` a `Copel 9` pelos gerentes reais da planilha.
+- Adicionados ao cadastro do gerente: codigo legado, lotacao, telefone e oportunidades historicas ate 30/06/2026.
+- O historico de janeiro a junho/2026 passou a ser a base da distribuicao futura.
+- Os marcadores antigos `S1` e `S2` de janeiro a junho contam como plantao historico.
+- A agenda futura ignora os marcadores antigos de julho em diante e e redistribuida pela regra nova.
+
+### Regras
+
+- O corte operacional da regra nova ficou definido em `2026-07-01`.
+- De `2026-07-01` em diante, cada dia tem somente um gerente em sobreaviso.
+- A pontuacao usa `plantoes / oportunidades disponiveis`.
+- Ferias e indisponibilidades reduzem oportunidades e nao geram compensacao futura.
+- A validacao de dias consecutivos passa a ser aplicada na escala futura, a partir do corte.
+
+### Importacao
+
+- Criado o comando idempotente `python manage.py importar_planilha_atual`.
+- O comando atualiza usuarios reais e contatos, recria bloqueios da planilha, importa 57 dias historicos, trava jan-jun/2026, limpa a escala futura nao manual e gera jul/2026 a dez/2027.
+- O comando legado `seed_initial_data` agora delega para `importar_planilha_atual`.
+
+### Validacao local
+
+- `python manage.py check`: OK.
+- `python manage.py test`: 24 testes OK.
+- Base local apos importacao: `s2_count = 0`, `consecutivos_futuro = 0`, `escalado_bloqueado = 0`, `future_days = 178`.
+- Carga anual 2026 ficou entre 15,7% e 17,8%.
+
 ## 2026-06-15 - Regra de um gerente de sobreaviso
 
 ### Regra de negócio

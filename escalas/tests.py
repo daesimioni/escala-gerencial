@@ -2,8 +2,10 @@
 Tests for Escala de Sobreaviso core business logic.
 """
 from datetime import date, timedelta
+from io import StringIO
 
 from django.contrib.auth.models import User
+from django.core.management import call_command
 from django.test import TestCase
 from django.urls import reverse
 from django.utils.html import strip_tags
@@ -405,3 +407,35 @@ class WorkflowViewTests(TestCase):
         self.assertIn('Sobreaviso', visible_text)
         self.assertNotIn('F Copel', visible_text)
         self.assertNotIn('N Copel', visible_text)
+
+
+class UsuarioPadraoCommandTests(TestCase):
+    def setUp(self):
+        self.grupo = GrupoEscala.objects.create(nome='A')
+        self.admin = User.objects.create_superuser(
+            username='admin',
+            password='admin123',
+        )
+
+    def test_sincronizar_usuarios_padrao_cria_logins_sem_alterar_admin(self):
+        samuel = UsuarioEscala.objects.create(nome='SAMUEL BITELO', grupo=self.grupo)
+        henry = UsuarioEscala.objects.create(nome='HENRY WILLIAM', grupo=self.grupo)
+
+        call_command('sincronizar_usuarios_padrao', stdout=StringIO())
+
+        samuel.refresh_from_db()
+        henry.refresh_from_db()
+        admin = User.objects.get(username='admin')
+
+        self.assertEqual(samuel.user.username, 'samuel.bitelo')
+        self.assertTrue(samuel.user.check_password('Escala@2026'))
+        self.assertFalse(samuel.user.is_staff)
+        self.assertFalse(samuel.user.is_superuser)
+
+        self.assertEqual(henry.user.username, 'henry.william')
+        self.assertTrue(henry.user.check_password('Escala@2026'))
+        self.assertFalse(henry.user.is_staff)
+        self.assertFalse(henry.user.is_superuser)
+
+        self.assertTrue(admin.is_superuser)
+        self.assertTrue(admin.check_password('admin123'))

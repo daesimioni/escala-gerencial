@@ -1,5 +1,6 @@
 from datetime import date
 
+from django.core.management import call_command
 from django.core.management.base import BaseCommand
 
 from escalas.models import (
@@ -122,6 +123,7 @@ class Command(BaseCommand):
 
         self._criar_feriados()
         usuarios = self._atualizar_usuarios()
+        call_command('sincronizar_usuarios_padrao')
         self._recriar_bloqueios(usuarios)
         self._importar_historico(usuarios)
         self._travar_historico()

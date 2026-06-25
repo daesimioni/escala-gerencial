@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-06-25 - Usuarios padrao dos gerentes
+
+- Criado comando `sincronizar_usuarios_padrao` para criar e vincular logins Django para todos os gerentes ativos.
+- Logins padrao seguem o nome do gerente em minusculo, separado por ponto, e sao usuarios comuns sem acesso ao Django Admin.
+- A importacao da planilha atual passa a sincronizar os logins dos gerentes sem remover o usuario administrador.
+
 ## 2026-06-25 - Dashboard com mini calendario
 
 - Substituido o quadro vazio de "Sem escala para hoje" por um mini calendario mensal no dashboard.

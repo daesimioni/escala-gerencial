@@ -621,7 +621,10 @@ def encontrar_melhor_par(bloco, stats_cache):
 
 # ─── Scale Generation ────────────────────────────────────────────────────────
 
-def gerar_escala_mensal(ano, mes, preservar_manuais=True, usuario_log=None, forcar=False):
+def gerar_escala_mensal(
+    ano, mes, preservar_manuais=True, usuario_log=None, forcar=False,
+    data_minima=None,
+):
     """
     Generate/regenerate on-call schedule for a full month.
 
@@ -642,6 +645,12 @@ def gerar_escala_mensal(ano, mes, preservar_manuais=True, usuario_log=None, forc
         )
         return 0, [f'Mês {mes:02d}/{ano} está fechado e não pode ser alterado.']
 
+    primeiro_dia_mes = date(ano, mes, 1)
+    if data_minima and data_minima.year == ano and data_minima.month == mes:
+        inicio_regeneracao = data_minima
+    else:
+        inicio_regeneracao = primeiro_dia_mes
+
     blocos = get_blocos_cobertura(ano, mes)
 
     # Collect manual assignments to preserve
@@ -652,9 +661,11 @@ def gerar_escala_mensal(ano, mes, preservar_manuais=True, usuario_log=None, forc
         ):
             manuais[ed.data] = ed
 
-    # Remove existing automatic assignments for the month (preserve MANUAL, CONFIRMADA, FECHADA, BLOQUEADA)
+    # Remove only assignments inside the regeneration window.
+    # Earlier days in the same month are part of the already published rota.
     EscalaDia.objects.filter(
-        data__year=ano, data__month=mes, status='AUTOMATICA'
+        data__year=ano, data__month=mes, data__gte=inicio_regeneracao,
+        status='AUTOMATICA',
     ).delete()
 
     stats_cache = build_stats_cache()
@@ -663,8 +674,8 @@ def gerar_escala_mensal(ano, mes, preservar_manuais=True, usuario_log=None, forc
     erros = []
 
     for bloco in blocos:
-        # Skip days already covered by manual assignments
-        uncovered = [d for d in bloco['days'] if d not in manuais]
+        # Skip days before the requested regeneration window or already covered manually.
+        uncovered = [d for d in bloco['days'] if d >= inicio_regeneracao and d not in manuais]
         if not uncovered:
             continue
 
@@ -804,12 +815,15 @@ def regenerar_apos_data(data_inicio, usuario_log=None):
     erros = []
     meses_pulados = []
 
-    # Regenerate current month + next 5 months, skipping locked ones
-    for _ in range(6):
+    # Regenerate current month from data_inicio, then the next 5 full months.
+    for indice_mes in range(6):
         if is_mes_fechado(ano_atual, mes_atual):
             meses_pulados.append(f'{mes_atual:02d}/{ano_atual}')
         else:
-            c, e = gerar_escala_mensal(ano_atual, mes_atual, True, usuario_log)
+            data_minima = data_inicio if indice_mes == 0 else None
+            c, e = gerar_escala_mensal(
+                ano_atual, mes_atual, True, usuario_log, data_minima=data_minima
+            )
             criados += c
             if e:
                 erros.extend(e)

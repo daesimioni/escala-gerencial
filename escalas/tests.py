@@ -1,7 +1,7 @@
 """
 Tests for Escala de Sobreaviso core business logic.
 """
-from datetime import date
+from datetime import date, timedelta
 
 from django.contrib.auth.models import User
 from django.test import TestCase
@@ -10,7 +10,7 @@ from django.utils.html import strip_tags
 
 from .models import BloqueioUsuario, EscalaDia, GrupoEscala, UsuarioEscala
 from .services import (
-    calcular_pascoa, detectar_feriadoes, gerar_escala_mensal,
+    calcular_pascoa, calcular_resumo_mensal, detectar_feriadoes, gerar_escala_mensal,
     get_blocos_cobertura, get_usuarios_disponiveis, validar_dia,
 )
 
@@ -280,6 +280,66 @@ class WorkflowViewTests(TestCase):
             if u != gerente
         )
         self.assertLessEqual(total_gerente, maior_outro)
+
+    def test_ferias_em_escala_existente_redistribui_so_a_partir_da_data(self):
+        gerar_escala_mensal(2026, 7, False)
+        escala_alvo = EscalaDia.objects.filter(
+            data__gte=date(2026, 7, 10),
+            data__month=7,
+            s1__isnull=False,
+        ).order_by('data').first()
+        self.assertIsNotNone(escala_alvo)
+
+        gerente = escala_alvo.s1
+        data_inicio = escala_alvo.data
+        data_fim = data_inicio + timedelta(days=8)
+        antes_da_ferias = {
+            ed.data: ed.s1_id
+            for ed in EscalaDia.objects.filter(data__lt=data_inicio).order_by('data')
+        }
+        datas_afetadas = list(EscalaDia.objects.filter(
+            data__gte=data_inicio,
+            data__lte=data_fim,
+            s1=gerente,
+        ).values_list('data', flat=True))
+        self.assertGreater(len(datas_afetadas), 0)
+
+        response = self.client.post(reverse('adicionar_bloqueio'), {
+            'usuario': gerente.id,
+            'tipo': 'FERIAS',
+            'data_inicio': data_inicio.isoformat(),
+            'data_fim': data_fim.isoformat(),
+            'motivo': 'Ferias ja com escala gerada',
+        })
+        self.assertEqual(response.status_code, 302)
+
+        depois_da_ferias = {
+            ed.data: ed.s1_id
+            for ed in EscalaDia.objects.filter(data__lt=data_inicio).order_by('data')
+        }
+        self.assertEqual(antes_da_ferias, depois_da_ferias)
+        self.assertFalse(EscalaDia.objects.filter(
+            data__gte=data_inicio,
+            data__lte=data_fim,
+            s1=gerente,
+        ).exists())
+        self.assertFalse(EscalaDia.objects.filter(data__year=2026, data__month=7).exclude(s2=None).exists())
+        for data_afetada in datas_afetadas:
+            escala = EscalaDia.objects.get(data=data_afetada)
+            self.assertIsNotNone(escala.s1)
+            self.assertNotEqual(escala.s1_id, gerente.id)
+
+        resumo = calcular_resumo_mensal(2026, 7)
+        linha = next(row for row in resumo if row['usuario'].id == gerente.id)
+        self.assertGreaterEqual(linha['ferias_dias'], (data_fim - data_inicio).days + 1)
+
+    def test_calendario_exibe_feriadao_do_dia_do_trabalho(self):
+        gerar_escala_mensal(2026, 5, False, forcar=True)
+        response = self.client.get(reverse('calendario_mes', kwargs={'ano': 2026, 'mes': 5}))
+        self.assertEqual(response.status_code, 200)
+        html = response.content.decode('utf-8')
+        self.assertIn('Feriad&atilde;o', html)
+        self.assertIn('Dia do Trabalho', html)
 
     def test_paginas_principais_nao_mostram_s1_s2_ou_presencial(self):
         gerar_escala_mensal(2026, 7, False)

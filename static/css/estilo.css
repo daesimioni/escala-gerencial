@@ -677,6 +677,38 @@ h3 { font-size: var(--font-size-2xl); }
   margin-bottom: 2px;
 }
 
+.calendar-type-badge {
+  display: block;
+  width: 100%;
+  margin-bottom: 2px;
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-size: .58rem;
+  font-weight: 700;
+  line-height: 1.25;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.calendar-type-badge span {
+  display: block;
+  font-weight: 600;
+  opacity: .8;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.calendar-type-badge.feriado {
+  background: var(--color-feriado-light);
+  color: var(--color-feriado-text);
+}
+
+.calendar-type-badge.feriadao {
+  background: var(--color-feriadao-light);
+  color: var(--color-feriadao-text);
+}
+
 .feriado-cell .calendar-day-num { color: var(--color-feriado-text); }
 .feriadao-cell .calendar-day-num { color: var(--color-feriadao-text); }
 

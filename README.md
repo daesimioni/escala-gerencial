@@ -21,6 +21,7 @@ Este repositorio e da Escala Gerencial. O dominio principal `daesung.com.br` per
 - O mesmo gerente nao pode ser escalado em dois dias consecutivos a partir de `2026-07-01`.
 - A distribuicao usa a proporcao entre plantoes e oportunidades disponiveis.
 - Ferias e bloqueios impedem escala no periodo cadastrado.
+- Ao cadastrar, editar ou remover ferias/bloqueios, a escala e redistribuida automaticamente a partir da data afetada, preservando os dias anteriores do mes.
 - Ferias reduzem os dias disponiveis do gerente e nao criam divida de compensacao no retorno.
 - Meses fechados preservam o historico e nao sao regenerados automaticamente.
 
@@ -41,6 +42,7 @@ O comando `python manage.py importar_planilha_atual` aplica a planilha usada com
 ## Funcionalidades
 
 - Calendario mensal e visao anual.
+- Etiquetas visuais para feriados e feriadoes no calendario mensal.
 - Geracao automatica da escala de sobreaviso.
 - Cadastro de lotacao e telefone dos gerentes.
 - Cadastro de ferias, faltas, treinamentos, licencas e indisponibilidades.

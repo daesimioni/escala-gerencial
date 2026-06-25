@@ -52,6 +52,11 @@
         <div class="calendar-day-num {% if day.dow == 6 %}text-danger{% elif day.dow == 5 %}text-primary{% endif %}">
           {{ day.date.day }}
         </div>
+        {% if day.day_type == 'feriadao' %}
+          <div class="calendar-type-badge feriadao" title="{{ day.coverage_name|default:'Feriadao' }}">Feriad&atilde;o{% if day.coverage_name %}<span>{{ day.coverage_name }}</span>{% endif %}</div>
+        {% elif day.day_type == 'feriado' %}
+          <div class="calendar-type-badge feriado" title="{{ day.coverage_name|default:'Feriado' }}">Feriado{% if day.coverage_name %}<span>{{ day.coverage_name }}</span>{% endif %}</div>
+        {% endif %}
 
         <!-- Indicators -->
         {% if day.assignment and day.assignment.manual or day.has_conflict %}
@@ -116,6 +121,11 @@
           <!-- Day info -->
           <div class="day-info">
             <div style="font-weight:600;font-size:.8rem">{{ day.date|date:"d/m/Y" }}</div>
+            {% if day.day_type == 'feriadao' %}
+              <span class="badge badge-feriadao" title="{{ day.coverage_name|default:'Feriadao' }}">Feriad&atilde;o{% if day.coverage_name %} - {{ day.coverage_name }}{% endif %}</span>
+            {% elif day.day_type == 'feriado' %}
+              <span class="badge badge-feriado" title="{{ day.coverage_name|default:'Feriado' }}">Feriado{% if day.coverage_name %} - {{ day.coverage_name }}{% endif %}</span>
+            {% endif %}
             {% if day.assignment %}
               {% if day.assignment.s1 %}
                 <span class="badge badge-s1" style="font-size:.6rem">Sobreaviso {{ day.assignment.s1.nome }}</span>

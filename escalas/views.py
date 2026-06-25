@@ -71,6 +71,15 @@ def _get_calendar_context(ano, mes):
     for ed in EscalaDia.objects.filter(data__year=ano, data__month=mes).select_related('s1', 's2', 's1__grupo', 's2__grupo'):
         assignments[ed.data] = ed
 
+    # Load coverage metadata for holidays, long weekends and regular weekends.
+    cobertura_por_dia = {}
+    for bloco in get_blocos_cobertura(ano, mes):
+        for bloco_dia in bloco['days']:
+            cobertura_por_dia[bloco_dia] = {
+                'type': bloco['type'],
+                'nome': bloco['nome'],
+            }
+
     # Load blocks
     blocos_usuarios = {}
     for blk in BloqueioUsuario.objects.select_related('usuario'):
@@ -94,17 +103,19 @@ def _get_calendar_context(ano, mes):
         day_info['blocks'] = blocos_usuarios.get(d, [])
         day_info['has_conflict'] = day_info['assignment'].tem_conflito if day_info.get('assignment') else False
 
+        cobertura = cobertura_por_dia.get(d, {})
+        day_info['coverage_type'] = cobertura.get('type', '')
+        day_info['coverage_name'] = cobertura.get('nome', '')
+
         # Determine day type for visual
         ed = assignments.get(d)
-        if ed:
-            if ed.feriadao:
-                day_info['day_type'] = 'feriadao'
-            elif ed.feriado:
-                day_info['day_type'] = 'feriado'
-            elif ed.fim_de_semana:
-                day_info['day_type'] = 'fim_de_semana'
-            else:
-                day_info['day_type'] = 'comum'
+        coverage_type = day_info['coverage_type']
+        if (ed and ed.feriadao) or coverage_type == 'FERIADAO':
+            day_info['day_type'] = 'feriadao'
+        elif (ed and ed.feriado) or coverage_type == 'FERIADO':
+            day_info['day_type'] = 'feriado'
+        elif (ed and ed.fim_de_semana) or coverage_type == 'FIM_DE_SEMANA':
+            day_info['day_type'] = 'fim_de_semana'
         else:
             day_info['day_type'] = 'fim_de_semana' if day_info['is_weekend'] else 'comum'
 

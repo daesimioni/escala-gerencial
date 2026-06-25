@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-06-25 - Dashboard com mini calendario
+
+- Substituido o quadro vazio de "Sem escala para hoje" por um mini calendario mensal no dashboard.
+- Dias com sobreaviso ficam destacados e exibem o gerente em tooltip ao passar o mouse.
+- Adicionada tabela de proximas escalas com data, gerente, contato e tipo do dia.
+- Layout ajustado para manter leitura em desktop e dispositivos moveis.
+
 ## 2026-06-24 - Ferias redistribuidas e feriadao visivel
 
 - Cadastro, edicao e remocao de ferias/bloqueios agora regeneram a escala apenas a partir da data afetada no primeiro mes, preservando os dias anteriores ja publicados.
@@ -7,6 +14,7 @@
 - Calendario mensal passou a exibir etiqueta explicita de feriado/feriadao mesmo em meses historicos ou fechados.
 - Validado o feriadao do Dia do Trabalho em maio/2026: 01/05, 02/05 e 03/05 aparecem como bloco de feriadao.
 - Validacao local: `python manage.py check` OK, `python manage.py test` com 27 testes OK, captura visual local gerada em `C:\tmp\escala-gerencial-maio-2026.png`.
+
 ## 2026-06-24 - Graficos e validacao de feriados
 
 - Relatorios ganharam painel visual com:

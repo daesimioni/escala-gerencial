@@ -341,6 +341,23 @@ class WorkflowViewTests(TestCase):
         self.assertIn('Feriad&atilde;o', html)
         self.assertIn('Dia do Trabalho', html)
 
+    def test_dashboard_exibe_mini_calendario_e_proximas_escalas(self):
+        hoje = date.today()
+        EscalaDia.objects.create(data=hoje, s1=self.usuarios[0])
+        EscalaDia.objects.create(data=hoje + timedelta(days=2), s1=self.usuarios[1], fim_de_semana=True)
+
+        response = self.client.get(reverse('dashboard'))
+        self.assertEqual(response.status_code, 200)
+        html = response.content.decode('utf-8')
+        visible_text = ' '.join(strip_tags(html).split())
+
+        self.assertIn('dashboard-mini-calendar', html)
+        self.assertIn('dashboard-mini-tooltip', html)
+        self.assertIn('Próximas Escalas', visible_text)
+        self.assertIn(self.usuarios[0].nome, html)
+        self.assertIn(self.usuarios[1].nome, visible_text)
+        self.assertNotIn('Sem escala para hoje', visible_text)
+
     def test_paginas_principais_nao_mostram_s1_s2_ou_presencial(self):
         gerar_escala_mensal(2026, 7, False)
         paths = [

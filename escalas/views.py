@@ -154,8 +154,60 @@ def dashboard(request):
     # System alerts (unresolved)
     alertas_sistema = AlertaSistema.objects.filter(resolvido=False).order_by('-created_at')[:10]
 
+    # Current month mini calendar
+    primeiro_dia_mes = date(hoje.year, hoje.month, 1)
+    ultimo_dia_mes = date(hoje.year, hoje.month, monthrange(hoje.year, hoje.month)[1])
+    inicio_grade = primeiro_dia_mes - timedelta(days=(primeiro_dia_mes.weekday() + 1) % 7)
+    fim_grade = ultimo_dia_mes + timedelta(days=6 - ((ultimo_dia_mes.weekday() + 1) % 7))
+
+    escalas_mes = {
+        ed.data: ed
+        for ed in EscalaDia.objects.filter(
+            data__gte=inicio_grade,
+            data__lte=fim_grade,
+        ).select_related('s1', 's1__grupo')
+    }
+
+    mini_calendar_weeks = []
+    dia_grade = inicio_grade
+    while dia_grade <= fim_grade:
+        semana = []
+        for _ in range(7):
+            in_month = dia_grade.month == hoje.month
+            escala = escalas_mes.get(dia_grade) if in_month else None
+            day_type = 'comum'
+            if escala:
+                if escala.feriadao:
+                    day_type = 'feriadao'
+                elif escala.feriado:
+                    day_type = 'feriado'
+                elif escala.fim_de_semana:
+                    day_type = 'fim_de_semana'
+            elif dia_grade.weekday() in (5, 6):
+                day_type = 'fim_de_semana'
+
+            semana.append({
+                'date': dia_grade,
+                'in_month': in_month,
+                'is_today': dia_grade == hoje,
+                'assignment': escala,
+                'manager_name': escala.s1.nome if escala and escala.s1 else '',
+                'day_type': day_type,
+            })
+            dia_grade += timedelta(days=1)
+        mini_calendar_weeks.append(semana)
+
+    # Upcoming assignments
+    proximas_escalas = EscalaDia.objects.filter(
+        data__gte=hoje,
+        s1__isnull=False,
+    ).select_related('s1', 's1__grupo').order_by('data')[:8]
+
     # Upcoming coverage
-    blocos_proximos = get_blocos_cobertura(hoje.year, hoje.month)[:5]
+    blocos_proximos = [
+        bloco for bloco in get_blocos_cobertura(hoje.year, hoje.month)
+        if bloco['days'] and bloco['days'][-1] >= hoje
+    ][:5]
 
     # Locked months
     meses_fechados = MesFechado.objects.all().order_by('ano', 'mes')
@@ -174,6 +226,9 @@ def dashboard(request):
         'alertas': alertas,
         'alertas_sistema': alertas_sistema,
         'blocos_proximos': blocos_proximos,
+        'mini_calendar_weeks': mini_calendar_weeks,
+        'nome_mes_atual': _nome_mes(hoje.month),
+        'proximas_escalas': proximas_escalas,
         'hoje': hoje,
         'meses_fechados': meses_fechados,
         'usuarios_ferias': usuarios_ferias,

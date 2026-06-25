@@ -891,6 +891,195 @@ h3 { font-size: var(--font-size-2xl); }
 .empty-state i { font-size: 3rem; margin-bottom: var(--space-md); display: block; }
 .empty-state h4 { color: var(--color-text-secondary); margin-bottom: var(--space-sm); }
 
+/* Dashboard schedule preview */
+.dashboard-schedule-card .card-body {
+  padding: 0;
+  overflow: visible;
+}
+
+.dashboard-mini-calendar {
+  padding: var(--space-lg);
+  overflow: visible;
+}
+
+.dashboard-mini-weekdays,
+.dashboard-mini-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 5px;
+}
+
+.dashboard-mini-weekdays {
+  margin-bottom: 6px;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.dashboard-mini-day {
+  position: relative;
+  min-height: 52px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-start;
+  padding: 6px;
+  transition: border-color .15s, box-shadow .15s, transform .15s;
+}
+
+.dashboard-mini-day.weekend,
+.dashboard-mini-day.fim_de_semana {
+  background: var(--color-weekend);
+}
+
+.dashboard-mini-day.feriado {
+  background: var(--color-feriado-light);
+  border-color: rgba(245, 158, 11, .45);
+}
+
+.dashboard-mini-day.feriadao {
+  background: var(--color-feriadao-light);
+  border-color: rgba(139, 92, 246, .45);
+}
+
+.dashboard-mini-day.has-duty {
+  background: var(--color-s1-light);
+  border-color: rgba(37, 99, 235, .5);
+  color: var(--color-s1-text);
+  font-weight: 800;
+}
+
+.dashboard-mini-day.today {
+  box-shadow: inset 0 0 0 2px var(--color-primary);
+}
+
+.dashboard-mini-day.other-month {
+  opacity: .38;
+}
+
+.dashboard-mini-day:hover {
+  border-color: var(--color-primary);
+  box-shadow: var(--shadow-md);
+  transform: translateY(-1px);
+  z-index: 4;
+}
+
+.dashboard-mini-number {
+  line-height: 1;
+}
+
+.dashboard-mini-duty {
+  position: absolute;
+  left: 6px;
+  right: 6px;
+  bottom: 6px;
+  height: 4px;
+  border-radius: 999px;
+  background: var(--color-s1);
+}
+
+.dashboard-mini-tooltip {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 7px);
+  transform: translateX(-50%) translateY(3px);
+  max-width: 190px;
+  padding: 6px 8px;
+  border-radius: var(--radius-sm);
+  background: var(--color-sidebar);
+  color: var(--color-text-inverse);
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  line-height: 1.25;
+  text-align: center;
+  white-space: normal;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity .15s, transform .15s, visibility .15s;
+  z-index: 10;
+}
+
+.dashboard-mini-tooltip::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 100%;
+  transform: translateX(-50%);
+  border: 5px solid transparent;
+  border-top-color: var(--color-sidebar);
+}
+
+.dashboard-mini-day:hover .dashboard-mini-tooltip {
+  opacity: 1;
+  visibility: visible;
+  transform: translateX(-50%) translateY(0);
+}
+
+.dashboard-upcoming {
+  border-top: 1px solid var(--color-border);
+}
+
+.dashboard-section-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: var(--space-md) var(--space-lg) 0;
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+}
+
+.dashboard-upcoming-table th,
+.dashboard-upcoming-table td {
+  padding: 10px var(--space-lg);
+}
+
+.dashboard-upcoming-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+@media (max-width: 575px) {
+  .dashboard-mini-calendar {
+    padding: var(--space-md);
+  }
+
+  .dashboard-mini-weekdays,
+  .dashboard-mini-grid {
+    gap: 3px;
+  }
+
+  .dashboard-mini-weekdays {
+    font-size: .58rem;
+  }
+
+  .dashboard-mini-day {
+    min-height: 42px;
+    padding: 5px;
+    border-radius: 5px;
+  }
+
+  .dashboard-mini-duty {
+    left: 5px;
+    right: 5px;
+    bottom: 5px;
+    height: 3px;
+  }
+
+  .dashboard-section-title {
+    padding: var(--space-md) var(--space-md) 0;
+  }
+
+  .dashboard-upcoming-table th,
+  .dashboard-upcoming-table td {
+    padding: 8px var(--space-md);
+  }
+}
+
 /* Mini calendar — annual view */
 .mini-calendar { font-size: .6rem; width: 100%; }
 .mini-calendar td { padding: 1px; text-align: center; }

@@ -37,27 +37,79 @@
 </div>
 
 <div class="row g-3">
-  <!-- Escala de Hoje -->
+  <!-- Mini calendario e proximas escalas -->
   <div class="col-lg-6">
-    <div class="card">
-      <div class="card-header"><i class="bi bi-calendar-check text-primary"></i> Escala de Hoje — {{ hoje|date:"d/m/Y" }}</div>
+    <div class="card dashboard-schedule-card">
+      <div class="card-header d-flex flex-wrap align-items-center justify-content-between gap-2">
+        <span><i class="bi bi-calendar3 text-primary"></i> Calendário do Mês</span>
+        <span class="small text-muted">{{ nome_mes_atual }} {{ hoje|date:"Y" }}</span>
+      </div>
       <div class="card-body">
-        {% if escala_hoje %}
-          <div class="p-3 rounded" style="background:var(--color-s1-light)">
-            <div style="font-size:.7rem;font-weight:600;color:var(--color-s1-text);text-transform:uppercase">Sobreaviso</div>
-            <div style="font-weight:700;font-size:1.1rem;color:var(--color-s1-text)">{{ escala_hoje.s1.nome|default:"---" }}</div>
-            <div style="font-size:.7rem;color:var(--color-s1-text);opacity:.7">Grupo {{ escala_hoje.s1.grupo.nome|default:"---" }}</div>
+        <div class="dashboard-mini-calendar" aria-label="Calendário rápido de escalas">
+          <div class="dashboard-mini-weekdays" aria-hidden="true">
+            <span>Dom</span><span>Seg</span><span>Ter</span><span>Qua</span><span>Qui</span><span>Sex</span><span>Sáb</span>
           </div>
-          {% if escala_hoje.tem_conflito %}
-            <div class="alert alert-danger mt-3 mb-0 py-2 small"><i class="bi bi-x-circle"></i> Conflito detectado nesta escala</div>
-          {% endif %}
-        {% else %}
-          <div class="empty-state py-4">
-            <i class="bi bi-calendar-x" style="font-size:2rem"></i>
-            <h5>Sem escala para hoje</h5>
-            <p class="small">Dia comum — sem cobertura necessária.</p>
+          <div class="dashboard-mini-grid">
+            {% for week in mini_calendar_weeks %}
+              {% for day in week %}
+                <div class="dashboard-mini-day {% if not day.in_month %}other-month{% endif %} {% if day.is_today %}today{% endif %} {% if day.assignment and day.assignment.s1 %}has-duty{% endif %} {{ day.day_type }}"
+                     {% if day.manager_name %}title="{{ day.date|date:'d/m/Y' }} — {{ day.manager_name }}"{% endif %}>
+                  <span class="dashboard-mini-number">{{ day.date.day }}</span>
+                  {% if day.assignment and day.assignment.s1 %}
+                    <span class="dashboard-mini-duty" aria-hidden="true"></span>
+                    <span class="dashboard-mini-tooltip">{{ day.manager_name }}</span>
+                  {% endif %}
+                </div>
+              {% endfor %}
+            {% endfor %}
           </div>
-        {% endif %}
+        </div>
+
+        <div class="dashboard-upcoming">
+          <div class="dashboard-section-title">
+            <i class="bi bi-list-check text-primary"></i> Próximas Escalas
+          </div>
+          <div class="table-responsive">
+            <table class="table table-sm align-middle mb-0 dashboard-upcoming-table">
+              <thead>
+                <tr>
+                  <th>Data</th>
+                  <th>Gerente</th>
+                  <th>Contato</th>
+                  <th>Tipo</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for escala in proximas_escalas %}
+                  <tr>
+                    <td style="white-space:nowrap">
+                      <strong>{{ escala.data|date:"d/m" }}</strong>
+                      <span class="d-block text-muted small">{{ escala.data|date:"D" }}</span>
+                    </td>
+                    <td>
+                      <span class="fw-semibold">{{ escala.s1.nome }}</span>
+                      <span class="d-block text-muted small">{{ escala.s1.lotacao|default:escala.s1.grupo.nome }}</span>
+                    </td>
+                    <td style="white-space:nowrap">{{ escala.s1.telefone|default:"—" }}</td>
+                    <td>
+                      {% if escala.feriadao %}
+                        <span class="badge badge-feriadao">Feriadão</span>
+                      {% elif escala.feriado %}
+                        <span class="badge badge-feriado">Feriado</span>
+                      {% elif escala.fim_de_semana %}
+                        <span class="badge bg-secondary">FDS</span>
+                      {% else %}
+                        <span class="badge bg-light text-dark">Comum</span>
+                      {% endif %}
+                    </td>
+                  </tr>
+                {% empty %}
+                  <tr><td colspan="4" class="text-center text-muted small py-3">Nenhuma escala futura encontrada.</td></tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
       </div>
     </div>
 

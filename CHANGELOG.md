@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-07-09 - Adoção do OpenSpec
+
+- Inicializado OpenSpec no repositorio com perfil Codex.
+- Registrado o contexto do projeto em `openspec/config.yaml`, incluindo as regras atuais da escala gerencial e o limite de dominio beta.daesung.com.br.
+- Criada e arquivada a change `adopt-openspec-baseline`.
+- Promovidas cinco specs iniciais para `openspec/specs/`: `schedule-generation`, `availability-management`, `access-control`, `user-interface` e `operations`.
+- Validacao local: `openspec validate --all --strict` OK, `python manage.py check` OK e `python manage.py test` com 29 testes OK.
+
 ## 2026-06-25 - Usuarios padrao dos gerentes
 
 - Criado comando `sincronizar_usuarios_padrao` para criar e vincular logins Django para todos os gerentes ativos.

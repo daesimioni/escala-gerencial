@@ -2,6 +2,8 @@
 
 Sistema Django para controle da escala gerencial dos gerentes Copel. O sistema gera e mantem uma escala de sobreaviso com apenas um gerente por dia, respeitando ferias, bloqueios, feriados, feriadoes e distribuicao equilibrada por disponibilidade.
 
+Documento completo das regras implementadas: [`docs/REGRAS_ESCALA_GERENCIAL.md`](docs/REGRAS_ESCALA_GERENCIAL.md).
+
 ## Ambiente correto
 
 - Escala Gerencial beta: `https://beta.daesung.com.br`

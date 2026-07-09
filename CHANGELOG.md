@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-07-09 - Documento consolidado de regras
+
+- Criado `docs/REGRAS_ESCALA_GERENCIAL.md` com as regras implementadas de escala, feriados, feriadoes, ferias, bloqueios, redistribuicao, usuarios, relatorios, exportacoes, auditoria, OpenSpec e limites de dominio.
+- Adicionado link do documento no `README.md`.
+
 ## 2026-07-09 - Adoção do OpenSpec
 
 - Inicializado OpenSpec no repositorio com perfil Codex.

@@ -8,17 +8,18 @@ import math
 from collections import defaultdict
 from datetime import date, timedelta
 
-from django.db import models as dm
+from django.db import models as dm, transaction
 from django.utils import timezone
 
 from .models import (
     AlertaSistema, BloqueioUsuario, ConfiguracaoSistema, EscalaBloco,
-    EscalaDia, Feriado, Feriadao, GrupoEscala, MesFechado, UsuarioEscala,
+    EscalaDia, Feriado, Feriadao, GrupoEscala, HistoricoAlteracao,
+    MesFechado, SolicitacaoTroca, UsuarioEscala,
 )
 
 HISTORICO_INICIO = date(2026, 1, 1)
-HISTORICO_FIM = date(2026, 6, 30)
-DATA_CORTE_HISTORICO = date(2026, 7, 1)
+HISTORICO_FIM = date(2026, 5, 31)
+DATA_CORTE_HISTORICO = date(2026, 6, 1)
 MOTIVO_BUFFER_FERIAS = 'Buffer automatico de ferias adjacente'
 
 
@@ -899,7 +900,7 @@ def gerar_escala_periodo(data_inicio, data_fim, preservar_manuais=True, usuario_
     return total_criados, total_erros, meses_pulados
 
 
-def regenerar_apos_data(data_inicio, usuario_log=None):
+def regenerar_apos_data(data_inicio, usuario_log=None, meses=6):
     """
     Regenerate scale from a given date forward. Skips locked months.
     Used after adding/removing blocks.
@@ -910,8 +911,8 @@ def regenerar_apos_data(data_inicio, usuario_log=None):
     erros = []
     meses_pulados = []
 
-    # Regenerate current month from data_inicio, then the next 5 full months.
-    for indice_mes in range(6):
+    # Regenerate current month from data_inicio, then following full months.
+    for indice_mes in range(meses):
         if is_mes_fechado(ano_atual, mes_atual):
             meses_pulados.append(f'{mes_atual:02d}/{ano_atual}')
         else:
@@ -1061,6 +1062,153 @@ def validar_dia(data, s1, s2):
             })
 
     return problemas
+
+
+def _gerente_final_na_troca(data_ref, origem, destino, gerente_origem, gerente_destino):
+    if data_ref == origem.data:
+        return gerente_destino
+    if data_ref == destino.data:
+        return gerente_origem
+    escala = EscalaDia.objects.filter(data=data_ref).select_related('s1').first()
+    return escala.s1 if escala else None
+
+
+def validar_troca_sobreaviso(solicitacao):
+    """Validate the final state of a requested swap without changing data."""
+    erros = []
+    origem = EscalaDia.objects.select_related('s1').get(pk=solicitacao.escala_origem_id)
+    destino = EscalaDia.objects.select_related('s1').get(pk=solicitacao.escala_destino_id)
+    gerente_origem = solicitacao.gerente_origem
+    gerente_destino = solicitacao.gerente_destino
+
+    if origem.data == destino.data:
+        return ['A troca precisa envolver duas datas diferentes.']
+    if origem.s1_id != gerente_origem.id:
+        erros.append(
+            f'A escala de {origem.data:%d/%m/%Y} mudou desde a solicitacao.'
+        )
+    if destino.s1_id != gerente_destino.id:
+        erros.append(
+            f'A escala de {destino.data:%d/%m/%Y} mudou desde a solicitacao.'
+        )
+    if erros:
+        return erros
+
+    propostas = [
+        (origem.data, gerente_destino),
+        (destino.data, gerente_origem),
+    ]
+    for data_ref, gerente in propostas:
+        bloqueio = BloqueioUsuario.objects.filter(
+            usuario=gerente,
+            data_inicio__lte=data_ref,
+            data_fim__gte=data_ref,
+        ).first()
+        if bloqueio:
+            erros.append(
+                f'{gerente.nome} esta indisponivel em {data_ref:%d/%m/%Y}: '
+                f'{bloqueio.get_tipo_display()}.'
+            )
+
+        for adj in (data_ref - timedelta(days=1), data_ref + timedelta(days=1)):
+            gerente_adj = _gerente_final_na_troca(
+                adj, origem, destino, gerente_origem, gerente_destino
+            )
+            if gerente_adj and gerente_adj.id == gerente.id:
+                erros.append(
+                    f'{gerente.nome} ficaria em dias consecutivos '
+                    f'({data_ref:%d/%m/%Y} e {adj:%d/%m/%Y}).'
+                )
+
+    return erros
+
+
+def aplicar_troca_sobreaviso(solicitacao, usuario_log=None, resposta_admin=''):
+    """
+    Apply an accepted swap request after administrator approval.
+
+    Returns (success, errors). The request is marked approved only when the
+    schedule rows are actually swapped.
+    """
+    with transaction.atomic():
+        solicitacao = SolicitacaoTroca.objects.select_for_update().select_related(
+            'escala_origem', 'escala_destino', 'gerente_origem', 'gerente_destino'
+        ).get(pk=solicitacao.pk)
+
+        if solicitacao.status != SolicitacaoTroca.STATUS_PENDENTE_ADMIN:
+            return False, ['A solicitacao nao esta aguardando aprovacao do administrador.']
+
+        erros = validar_troca_sobreaviso(solicitacao)
+        if erros:
+            return False, erros
+
+        origem = EscalaDia.objects.select_for_update().get(pk=solicitacao.escala_origem_id)
+        destino = EscalaDia.objects.select_for_update().get(pk=solicitacao.escala_destino_id)
+
+        origem_anterior = origem.s1_id
+        destino_anterior = destino.s1_id
+        agora = timezone.now()
+
+        origem.s1 = solicitacao.gerente_destino
+        origem.s2 = None
+        origem.manual = True
+        origem.status = 'MANUAL'
+        origem.editado_por = usuario_log
+        origem.editado_em = agora
+        origem.observacao = _append_observacao_troca(origem.observacao, solicitacao)
+        origem.save()
+
+        destino.s1 = solicitacao.gerente_origem
+        destino.s2 = None
+        destino.manual = True
+        destino.status = 'MANUAL'
+        destino.editado_por = usuario_log
+        destino.editado_em = agora
+        destino.observacao = _append_observacao_troca(destino.observacao, solicitacao)
+        destino.save()
+
+        solicitacao.status = SolicitacaoTroca.STATUS_APROVADA
+        solicitacao.admin_respondido_por = usuario_log
+        solicitacao.admin_respondido_em = agora
+        solicitacao.resposta_admin = resposta_admin
+        solicitacao.save(update_fields=[
+            'status', 'admin_respondido_por', 'admin_respondido_em',
+            'resposta_admin', 'updated_at',
+        ])
+
+        HistoricoAlteracao.objects.create(
+            usuario=usuario_log,
+            tipo='TROCA_ESCALA',
+            descricao=(
+                f'Troca aprovada: {origem.data:%d/%m/%Y} '
+                f'({solicitacao.gerente_destino.nome}) por '
+                f'{destino.data:%d/%m/%Y} ({solicitacao.gerente_origem.nome})'
+            ),
+            dados_anteriores={
+                'origem': origem_anterior,
+                'destino': destino_anterior,
+                'solicitacao': solicitacao.id,
+            },
+            dados_novos={
+                'origem': origem.s1_id,
+                'destino': destino.s1_id,
+                'solicitacao': solicitacao.id,
+            },
+        )
+
+        _atualizar_contadores_usuarios()
+
+    return True, []
+
+
+def _append_observacao_troca(observacao, solicitacao):
+    nota = (
+        f'Troca aprovada via solicitacao #{solicitacao.id}: '
+        f'{solicitacao.gerente_origem.nome} <-> {solicitacao.gerente_destino.nome}.'
+    )
+    if observacao:
+        return f'{observacao}\n{nota}'
+    return nota
 
 
 # ─── Reports ─────────────────────────────────────────────────────────────────

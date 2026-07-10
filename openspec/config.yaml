@@ -12,13 +12,13 @@ context: |
   - Testes em django.test/pytest-compatible test runner via manage.py test.
 
   Regras de dominio atuais:
-  - A partir de 2026-07-01 existe somente um gerente por dia, sempre em regime de sobreaviso.
-  - Nao existem mais S1/S2 como regra operacional futura; S1/S2 so podem aparecer como historico de janeiro a junho de 2026.
+  - A partir de 2026-06-01 existe somente um gerente por dia, sempre em regime de sobreaviso.
+  - Nao existem mais S1/S2 como regra operacional futura; S1/S2 so podem aparecer como historico legado de janeiro a maio de 2026.
   - Finais de semana, feriados e feriadoes exigem cobertura de sobreaviso, sem gerente presencial.
   - A mesma pessoa nao pode ficar escalada em dois dias consecutivos.
   - A distribuicao deve ser proporcional aos dias disponiveis de cada gerente, desconsiderando ferias/bloqueios como oportunidade de trabalho.
   - Ferias e bloqueios devem impedir escala no periodo e redistribuir automaticamente a partir da data impactada.
-  - Meses fechados e historico ate 2026-06-30 devem ser preservados contra regeracao automatica.
+  - Meses fechados, historico legado ate 2026-05-31 e fixos importados ate 2026-08-02 devem ser preservados contra regeracao automatica.
   - Feriados nacionais, estaduais do Parana e municipais de Curitiba devem ser considerados.
 
   Convencoes:

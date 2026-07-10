@@ -25,12 +25,12 @@ The monthly and annual calendar views SHALL present future schedule entries as a
 The UI SHALL NOT present future entries as two daily managers or as S1/S2 operational roles.
 
 #### Scenario: Monthly calendar after cutoff
-- **GIVEN** a generated date after 2026-07-01 has one manager assigned
+- **GIVEN** a generated date after 2026-06-01 has one manager assigned
 - **WHEN** the user opens the monthly calendar
 - **THEN** the date shows one on-call manager only
 
 #### Scenario: Annual view after cutoff
-- **GIVEN** annual schedule data exists after 2026-07-01
+- **GIVEN** annual schedule data exists after 2026-06-01
 - **WHEN** the user opens the annual view
 - **THEN** each scheduled future date represents one on-call assignment
 
@@ -70,3 +70,17 @@ CSV exports SHALL use current single-manager sobreaviso terminology for future s
 - **THEN** each scheduled date contains a single on-call manager field
 - **AND** no future S1/S2 operational column is required
 
+### Requirement: Swap request page guides manager acceptance and admin approval
+The swap page SHALL let a manager choose one of their own assigned dates, choose another manager, choose one of that manager's assigned dates, and submit the request.
+
+The page SHALL show pending requests awaiting the current user's response and, for administrators, requests awaiting approval.
+
+#### Scenario: Manager sees destination dates
+- **GIVEN** a manager is creating a swap request
+- **WHEN** the manager selects another manager
+- **THEN** the page offers that manager's assigned future dates as possible swap targets
+
+#### Scenario: Admin sees approval queue
+- **GIVEN** a staff administrator opens the swap page
+- **WHEN** there are requests accepted by destination managers
+- **THEN** the page lists them with approve and reject actions

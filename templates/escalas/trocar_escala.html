@@ -3,34 +3,186 @@
 {% block page_title %}Trocar Sobreaviso{% endblock %}
 
 {% block content %}
-<div class="row justify-content-center">
-  <div class="col-lg-8">
+<div class="row g-3">
+  <div class="col-xl-5">
     <div class="card">
-      <div class="card-header"><i class="bi bi-arrow-left-right"></i> Substituir gerente de sobreaviso</div>
+      <div class="card-header"><i class="bi bi-arrow-left-right text-primary"></i> Solicitar troca</div>
       <div class="card-body">
-        <form method="post">
-          {% csrf_token %}
-          <div class="row g-3">
-            {% for field in form %}
-              <div class="col-md-6">
-                <label class="form-label">{{ field.label }}</label>
-                {{ field }}
-                {% if field.help_text %}<div class="form-text small">{{ field.help_text }}</div>{% endif %}
-                {% if field.errors %}<div class="text-danger small mt-1">{{ field.errors }}</div>{% endif %}
-              </div>
+        {% if gerente_atual %}
+          <form method="post" class="swap-form">
+            {% csrf_token %}
+            <div class="mb-3">
+              <label class="form-label">{{ form.escala_origem.label }}</label>
+              {{ form.escala_origem }}
+              {% if form.escala_origem.errors %}<div class="text-danger small mt-1">{{ form.escala_origem.errors }}</div>{% endif %}
+            </div>
+            <div class="mb-3">
+              <label class="form-label">{{ form.gerente_destino.label }}</label>
+              {{ form.gerente_destino }}
+              {% if form.gerente_destino.errors %}<div class="text-danger small mt-1">{{ form.gerente_destino.errors }}</div>{% endif %}
+            </div>
+            <div class="mb-3">
+              <label class="form-label">{{ form.escala_destino.label }}</label>
+              {{ form.escala_destino }}
+              {% if form.escala_destino.errors %}<div class="text-danger small mt-1">{{ form.escala_destino.errors }}</div>{% endif %}
+            </div>
+            <div class="mb-3">
+              <label class="form-label">{{ form.motivo.label }}</label>
+              {{ form.motivo }}
+              {% if form.motivo.errors %}<div class="text-danger small mt-1">{{ form.motivo.errors }}</div>{% endif %}
+            </div>
+            {% if form.non_field_errors %}
+              <div class="alert alert-danger small">{{ form.non_field_errors }}</div>
+            {% endif %}
+            <div class="alert alert-info small">
+              <i class="bi bi-info-circle"></i>
+              A escala so muda depois do aceite do outro gerente e da aprovacao do administrador.
+            </div>
+            <button type="submit" class="btn btn-primary">
+              <i class="bi bi-send"></i> Solicitar
+            </button>
+          </form>
+        {% else %}
+          <div class="alert alert-warning mb-0">
+            Seu login nao esta vinculado a um gerente ativo. Peça ao administrador para revisar o cadastro.
+          </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <div class="col-xl-7">
+    <div class="card mb-3">
+      <div class="card-header"><i class="bi bi-inbox text-primary"></i> Aguardando minha resposta</div>
+      <div class="table-responsive">
+        <table class="table table-sm align-middle mb-0">
+          <thead><tr><th>Solicitante</th><th>Troca proposta</th><th>Motivo</th><th class="text-end">Acoes</th></tr></thead>
+          <tbody>
+            {% for item in aguardando_minha_resposta %}
+              <tr>
+                <td>{{ item.gerente_origem.nome }}</td>
+                <td>
+                  <strong>{{ item.escala_origem.data|date:"d/m/Y" }}</strong>
+                  <i class="bi bi-arrow-left-right mx-1"></i>
+                  <strong>{{ item.escala_destino.data|date:"d/m/Y" }}</strong>
+                </td>
+                <td class="text-muted small">{{ item.motivo|default:"-" }}</td>
+                <td class="text-end" style="white-space:nowrap">
+                  <form method="post" action="{% url 'aceitar_solicitacao_troca' item.id %}" class="d-inline">
+                    {% csrf_token %}
+                    <button class="btn btn-sm btn-success"><i class="bi bi-check-lg"></i> Aceitar</button>
+                  </form>
+                  <form method="post" action="{% url 'recusar_solicitacao_troca' item.id %}" class="d-inline">
+                    {% csrf_token %}
+                    <button class="btn btn-sm btn-outline-danger"><i class="bi bi-x-lg"></i> Recusar</button>
+                  </form>
+                </td>
+              </tr>
+            {% empty %}
+              <tr><td colspan="4" class="text-center text-muted small py-3">Nenhuma solicitacao pendente para voce.</td></tr>
             {% endfor %}
-          </div>
-          <div class="alert alert-warning mt-3 small">
-            <i class="bi bi-info-circle"></i>
-            A troca valida ferias, bloqueios e a regra de nao repetir o mesmo gerente em dias consecutivos.
-          </div>
-          <div class="mt-2">
-            <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg"></i> Salvar Troca</button>
-            <a href="{% url 'calendario' %}" class="btn btn-outline-secondary ms-2">Cancelar</a>
-          </div>
-        </form>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    {% if request.user.is_staff %}
+      <div class="card mb-3 border-warning">
+        <div class="card-header"><i class="bi bi-shield-check text-warning"></i> Aguardando aprovacao do administrador</div>
+        <div class="table-responsive">
+          <table class="table table-sm align-middle mb-0">
+            <thead><tr><th>Gerentes</th><th>Datas</th><th>Status</th><th class="text-end">Acoes</th></tr></thead>
+            <tbody>
+              {% for item in aguardando_admin %}
+                <tr>
+                  <td>{{ item.gerente_origem.nome }} / {{ item.gerente_destino.nome }}</td>
+                  <td>
+                    <strong>{{ item.escala_origem.data|date:"d/m/Y" }}</strong>
+                    <i class="bi bi-arrow-left-right mx-1"></i>
+                    <strong>{{ item.escala_destino.data|date:"d/m/Y" }}</strong>
+                  </td>
+                  <td><span class="badge bg-warning text-dark">{{ item.get_status_display }}</span></td>
+                  <td class="text-end" style="white-space:nowrap">
+                    <form method="post" action="{% url 'aprovar_solicitacao_troca' item.id %}" class="d-inline">
+                      {% csrf_token %}
+                      <button class="btn btn-sm btn-success"><i class="bi bi-check2-circle"></i> Aprovar</button>
+                    </form>
+                    <form method="post" action="{% url 'rejeitar_solicitacao_troca' item.id %}" class="d-inline">
+                      {% csrf_token %}
+                      <button class="btn btn-sm btn-outline-danger"><i class="bi bi-x-circle"></i> Rejeitar</button>
+                    </form>
+                  </td>
+                </tr>
+              {% empty %}
+                <tr><td colspan="4" class="text-center text-muted small py-3">Nenhuma solicitacao aguardando aprovacao.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    {% endif %}
+
+    <div class="card">
+      <div class="card-header"><i class="bi bi-clock-history text-primary"></i> Minhas solicitacoes</div>
+      <div class="table-responsive">
+        <table class="table table-sm align-middle mb-0">
+          <thead><tr><th>Criada em</th><th>Troca</th><th>Destino</th><th>Status</th></tr></thead>
+          <tbody>
+            {% for item in minhas_solicitacoes %}
+              <tr>
+                <td style="white-space:nowrap">{{ item.created_at|date:"d/m H:i" }}</td>
+                <td>
+                  <strong>{{ item.escala_origem.data|date:"d/m/Y" }}</strong>
+                  <i class="bi bi-arrow-left-right mx-1"></i>
+                  <strong>{{ item.escala_destino.data|date:"d/m/Y" }}</strong>
+                </td>
+                <td>{{ item.gerente_destino.nome }}</td>
+                <td><span class="badge bg-secondary">{{ item.get_status_display }}</span></td>
+              </tr>
+            {% empty %}
+              <tr><td colspan="4" class="text-center text-muted small py-3">Voce ainda nao criou solicitacoes.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
       </div>
     </div>
   </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  (function () {
+    const managerSelect = document.querySelector('[data-role="swap-manager"]');
+    const targetSelect = document.querySelector('[data-role="swap-target"]');
+    if (!managerSelect || !targetSelect) return;
+
+    const allOptions = Array.from(targetSelect.options).map((option) => ({
+      value: option.value,
+      text: option.text,
+      managerId: option.dataset.managerId || '',
+      selected: option.selected,
+    }));
+
+    function renderTargets() {
+      const selectedManager = managerSelect.value;
+      const previousValue = targetSelect.value;
+      targetSelect.innerHTML = '';
+      allOptions.forEach((item, index) => {
+        if (index !== 0 && selectedManager && item.managerId !== selectedManager) return;
+        const option = document.createElement('option');
+        option.value = item.value;
+        option.textContent = item.text;
+        if (item.managerId) option.dataset.managerId = item.managerId;
+        targetSelect.appendChild(option);
+      });
+      if ([...targetSelect.options].some((option) => option.value === previousValue)) {
+        targetSelect.value = previousValue;
+      }
+    }
+
+    managerSelect.addEventListener('change', renderTargets);
+    renderTargets();
+  })();
+</script>
 {% endblock %}

@@ -1,6 +1,6 @@
 # Regras Implementadas - Escala Gerencial
 
-Ultima atualizacao: 2026-07-09
+Ultima atualizacao: 2026-07-10
 
 Este documento consolida as regras atualmente implementadas no sistema Escala de Sobreaviso Gerencial. Ele foi derivado do codigo, testes, README, changelog e baseline OpenSpec arquivada em `openspec/specs/`.
 
@@ -9,19 +9,21 @@ Este documento consolida as regras atualmente implementadas no sistema Escala de
 - O sistema controla a escala gerencial de sobreaviso.
 - O ambiente correto do sistema gerencial e `beta.daesung.com.br`.
 - `daesung.com.br` e `www.daesung.com.br` pertencem ao sistema Escala VIP e nao devem receber deploy, proxy, aliases ou arquivos da escala gerencial.
-- A regra operacional nova comeca em `2026-07-01`.
-- O periodo de `2026-01-01` ate `2026-06-30` e historico importado da planilha e deve ser preservado.
+- A regra operacional nova comeca em `2026-06-01`.
+- O periodo de `2026-01-01` ate `2026-05-31` e historico legado importado da planilha e deve ser preservado.
+- As escalas de `2026-06-01` ate `2026-08-02` sao fixas importadas como sobreaviso unico.
 
 ## 2. Modelo operacional da escala
 
-- A partir de `2026-07-01`, cada dia que exige cobertura tem apenas um gerente.
+- A partir de `2026-06-01`, cada dia que exige cobertura tem apenas um gerente.
 - Esse gerente fica em sobreaviso.
 - Nao existe mais escala presencial para finais de semana, feriados ou feriadoes.
 - Nao existem mais dois gerentes no mesmo dia para a regra futura.
 - Os campos internos `s1` e `s2` ainda existem por compatibilidade de banco/modelo.
 - Na regra futura, o gerente unico fica gravado em `s1`.
 - Na regra futura, `s2` deve ficar vazio.
-- Marcadores antigos S1/S2 podem existir apenas no historico importado ate `2026-06-30`.
+- Marcadores antigos S1/S2 podem existir apenas no historico legado importado ate `2026-05-31`.
+- Marcacoes S1 da planilha a partir de junho/2026 sao tratadas como `S`, isto e, sobreaviso unico.
 - Dias comuns de semana, sem feriado e sem feriadao, nao precisam de cobertura automatica.
 
 ## 3. Datas que exigem cobertura
@@ -191,7 +193,7 @@ A regra de equilibrio usa:
 
 - quantidade de plantoes/sobreavisos ja atribuidos;
 - quantidade de oportunidades em que o gerente estava disponivel;
-- contadores historicos importados ate `2026-06-30`;
+- contadores historicos importados ate `2026-05-31`;
 - contagem de fins de semana, feriados e feriadoes;
 - distancia desde a ultima escala;
 - bloqueios e ferias.
@@ -262,17 +264,20 @@ Regras:
 - Ao reabrir um mes, o bloqueio do mes e removido e dias com status `FECHADA` voltam para `AUTOMATICA`.
 - Fechar e reabrir mes e operacao restrita a administrador/staff.
 
-## 15. Historico de janeiro a junho de 2026
+## 15. Historico legado e escala fixa importada de 2026
 
-O historico de `2026-01-01` ate `2026-06-30` vem da planilha atual.
+O historico legado de `2026-01-01` ate `2026-05-31` vem da planilha atual.
 
 Regras:
 
-- O historico e preservado contra a regra nova.
-- A regra de um gerente por dia vale somente a partir de `2026-07-01`.
-- Marcadores antigos S1/S2 podem contar como plantao historico.
+- O historico legado e preservado contra a regra nova.
+- A regra de um gerente por dia vale a partir de `2026-06-01`.
+- Marcadores antigos S1/S2 podem contar como plantao historico apenas ate 31/05/2026.
+- De 01/06/2026 a 02/08/2026, marcacoes S1 da planilha sao importadas como sobreaviso unico `S`.
+- Junho, julho e 01-02/08/2026 sao preservados como escala fixa ja aprovada.
 - Os contadores historicos importados entram na distribuicao futura.
-- Jan/2026 a Jun/2026 ficam fechados/travados apos importacao.
+- Jan/2026 a Jul/2026 ficam fechados/travados apos importacao.
+- Os dias 01/08/2026 e 02/08/2026 ficam manuais e preservados; a geracao automatica comeca em 03/08/2026.
 
 ## 16. Edicao manual de escala
 
@@ -286,17 +291,23 @@ Ao editar manualmente um dia:
 
 ## 17. Troca de sobreaviso
 
-A tela de troca substitui o gerente de sobreaviso de uma data.
+A tela de troca cria uma solicitacao entre dois gerentes.
 
 Regras:
 
-- A data precisa ter escala cadastrada.
-- O gerente destino nao pode estar bloqueado naquela data.
-- O gerente destino nao pode gerar repeticao em dias consecutivos.
+- O gerente solicitante escolhe uma data sua e um gerente destino.
+- A interface lista as datas escaladas do gerente destino para selecionar a data de troca.
+- Ao solicitar, a escala ainda nao muda.
+- O gerente destino precisa aceitar ou recusar.
+- Se o gerente destino aceitar, a solicitacao fica pendente do administrador.
+- O administrador aprova ou rejeita.
+- A escala so e alterada quando o administrador aprova.
+- Na aprovacao, os dois dias sao trocados entre si.
+- A troca valida ferias, bloqueios e proibicao de dias consecutivos para o estado final.
 - A troca deixa `s2` vazio.
-- A escala trocada vira manual.
+- As escalas trocadas viram manuais.
 - Os contadores dos usuarios sao recalculados.
-- A troca e gravada no historico.
+- A solicitacao e a troca aprovada ficam auditaveis.
 
 ## 18. Limpeza de dia
 
@@ -430,6 +441,8 @@ Administrador:
 
 - deve ser preservado;
 - pode executar operacoes administrativas;
+- pode editar diretamente ferias, bloqueios e escala de sobreaviso;
+- pode aprovar ou rejeitar solicitacoes de troca;
 - pode fechar e reabrir meses;
 - nao deve ser rebaixado pelo comando de sincronizacao de usuarios padrao.
 
@@ -441,6 +454,8 @@ Usuarios padrao:
 - nao sao superusuarios;
 - sao ativados no Django;
 - seguem username gerado pelo nome do gerente em minusculo, sem acentos e com separador ponto.
+- nao podem editar diretamente ferias, bloqueios, feriados, feriadoes, geracao ou escala;
+- podem solicitar troca de sobreaviso e responder solicitacoes recebidas.
 
 ## 26. Comandos operacionais
 
@@ -457,10 +472,11 @@ Regras do comando:
 - sincroniza usuarios padrao dos gerentes;
 - recria bloqueios da planilha;
 - cria buffers automaticos de fim de semana antes/depois das ferias;
-- importa a escala historica ate 09/07/2026;
-- trava Jan/2026 a Jun/2026;
-- limpa toda escala futura a partir de 10/07/2026;
-- gera escala de 10/07/2026 a Dez/2026;
+- importa legado ate 31/05/2026;
+- preserva escalas fixas de 01/06/2026 a 02/08/2026;
+- trava Jan/2026 a Jul/2026;
+- limpa toda escala futura a partir de 03/08/2026;
+- gera escala de 03/08/2026 a Dez/2026;
 - atualiza contadores.
 
 ### `python manage.py sincronizar_usuarios_padrao`
@@ -490,7 +506,7 @@ O sistema registra eventos importantes em historico ou alertas.
 Eventos registrados incluem:
 
 - edicao manual de dia;
-- troca de sobreaviso;
+- solicitacao, aceite e aprovacao de troca de sobreaviso;
 - limpeza/remocao de escala;
 - fechamento de mes;
 - reabertura de mes;
@@ -553,6 +569,7 @@ O sistema nao deve:
 - escalar gerente em fim de semana de buffer automatico de ferias;
 - escalar a mesma pessoa em dois dias consecutivos;
 - alterar automaticamente mes fechado;
-- alterar historico Jan-Jun/2026 pela regra nova;
+- alterar automaticamente historico Jan-Mai/2026 pela regra nova;
+- alterar automaticamente escalas fixas importadas de Jun-Jul/2026 e 01-02/08/2026;
 - tratar final de semana, feriado ou feriadao como presencial;
 - substituir a Escala VIP em `daesung.com.br` ou `www.daesung.com.br`.

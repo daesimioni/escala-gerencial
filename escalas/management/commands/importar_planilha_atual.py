@@ -18,8 +18,8 @@ from escalas.services import (
 )
 
 
-IMPORTACAO_HISTORICO_FIM = date(2026, 7, 9)
-GERACAO_FUTURA_INICIO = date(2026, 7, 10)
+IMPORTACAO_HISTORICO_FIM = date(2026, 8, 2)
+GERACAO_FUTURA_INICIO = date(2026, 8, 3)
 
 USUARIOS_CIDIS_2026 = [
     ('SAMUEL BITELO', 'DOTR', '41 99826-2343', 'A'),
@@ -82,6 +82,7 @@ MARCACOES_TRABALHO_CIDIS_2026 = [
     ('2026-06-06', 'SAMUEL BITELO', 'S1'),
     ('2026-06-07', 'SAMUEL BITELO', 'S1'),
     ('2026-06-28', 'SAMUEL BITELO', 'S1'),
+    ('2026-07-25', 'SAMUEL BITELO', 'S1'),
     ('2026-01-24', 'HENRY WILLIAM', 'S2'),
     ('2026-01-25', 'HENRY WILLIAM', 'S1'),
     ('2026-04-11', 'HENRY WILLIAM', 'S1'),
@@ -91,6 +92,7 @@ MARCACOES_TRABALHO_CIDIS_2026 = [
     ('2026-05-03', 'HENRY WILLIAM', 'S2'),
     ('2026-05-30', 'HENRY WILLIAM', 'S2'),
     ('2026-05-31', 'HENRY WILLIAM', 'S1'),
+    ('2026-07-11', 'HENRY WILLIAM', 'S1'),
     ('2026-01-17', 'JEZIEL', 'S1'),
     ('2026-01-18', 'JEZIEL', 'S2'),
     ('2026-02-07', 'JEZIEL', 'S1'),
@@ -105,6 +107,7 @@ MARCACOES_TRABALHO_CIDIS_2026 = [
     ('2026-05-16', 'JEZIEL', 'S1'),
     ('2026-05-17', 'JEZIEL', 'S2'),
     ('2026-06-27', 'JEZIEL', 'S1'),
+    ('2026-08-01', 'JEZIEL', 'S1'),
     ('2026-02-14', 'PANGARTTE', 'S1'),
     ('2026-02-15', 'PANGARTTE', 'S2'),
     ('2026-02-17', 'PANGARTTE', 'S1'),
@@ -115,6 +118,7 @@ MARCACOES_TRABALHO_CIDIS_2026 = [
     ('2026-05-09', 'PANGARTTE', 'S1'),
     ('2026-05-10', 'PANGARTTE', 'S2'),
     ('2026-06-14', 'PANGARTTE', 'S1'),
+    ('2026-07-26', 'PANGARTTE', 'S1'),
     ('2026-01-24', 'JULIANO MOSKO', 'S1'),
     ('2026-01-25', 'JULIANO MOSKO', 'S2'),
     ('2026-03-21', 'JULIANO MOSKO', 'S1'),
@@ -124,6 +128,7 @@ MARCACOES_TRABALHO_CIDIS_2026 = [
     ('2026-05-30', 'JULIANO MOSKO', 'S1'),
     ('2026-05-31', 'JULIANO MOSKO', 'S2'),
     ('2026-06-20', 'JULIANO MOSKO', 'S1'),
+    ('2026-07-18', 'JULIANO MOSKO', 'S1'),
     ('2026-02-21', 'MARCOS VINICIUS', 'S2'),
     ('2026-02-22', 'MARCOS VINICIUS', 'S1'),
     ('2026-03-28', 'MARCOS VINICIUS', 'S1'),
@@ -131,6 +136,7 @@ MARCACOES_TRABALHO_CIDIS_2026 = [
     ('2026-05-16', 'MARCOS VINICIUS', 'S2'),
     ('2026-05-17', 'MARCOS VINICIUS', 'S1'),
     ('2026-07-04', 'MARCOS VINICIUS', 'S1'),
+    ('2026-08-02', 'MARCOS VINICIUS', 'S1'),
     ('2026-01-31', 'RONALDO JR', 'S2'),
     ('2026-02-01', 'RONALDO JR', 'S1'),
     ('2026-02-14', 'RONALDO JR', 'S2'),
@@ -152,6 +158,7 @@ MARCACOES_TRABALHO_CIDIS_2026 = [
     ('2026-03-22', 'LUIZ ROBERTO', 'S1'),
     ('2026-05-23', 'LUIZ ROBERTO', 'S1'),
     ('2026-05-24', 'LUIZ ROBERTO', 'S2'),
+    ('2026-07-12', 'LUIZ ROBERTO', 'S1'),
     ('2026-01-03', 'DIONIZIO', 'S2'),
     ('2026-01-04', 'DIONIZIO', 'S1'),
     ('2026-01-17', 'DIONIZIO', 'S2'),
@@ -165,11 +172,12 @@ MARCACOES_TRABALHO_CIDIS_2026 = [
     ('2026-05-02', 'DIONIZIO', 'S2'),
     ('2026-05-03', 'DIONIZIO', 'S1'),
     ('2026-06-21', 'DIONIZIO', 'S1'),
+    ('2026-07-19', 'DIONIZIO', 'S1'),
 ]
 
 
 class Command(BaseCommand):
-    help = 'Importa a planilha CIDIS 2026, preserva historico ate 09/07 e redistribui o restante.'
+    help = 'Importa a planilha CIDIS 2026, preserva fixos ate 02/08 e redistribui o restante.'
 
     def handle(self, *args, **options):
         self.stdout.write('>>> Importando planilha CIDIS 2026 da escala gerencial...')
@@ -188,7 +196,7 @@ class Command(BaseCommand):
             chave='data_corte_historico',
             defaults={
                 'valor': DATA_CORTE_HISTORICO.isoformat(),
-                'descricao': 'A partir desta data a escala usa regra nova de um gerente por dia.',
+                'descricao': 'A partir desta data a escala usa regra de um gerente por dia.',
             },
         )
         ConfiguracaoSistema.objects.update_or_create(
@@ -206,13 +214,13 @@ class Command(BaseCommand):
             },
         )
 
-        self.stdout.write('  [BALANCEANDO] Gerando 10/07/2026 a 12/2026...')
-        total, erros = regenerar_apos_data(GERACAO_FUTURA_INICIO)
+        self.stdout.write('  [BALANCEANDO] Gerando 03/08/2026 a 12/2026...')
+        total, erros = regenerar_apos_data(GERACAO_FUTURA_INICIO, meses=5)
         _atualizar_contadores_usuarios()
 
         HistoricoAlteracao.objects.create(
             tipo='REGENERACAO',
-            descricao='Importacao CIDIS 2026: roster atual, ferias, buffers e escala futura desde 10/07/2026.',
+            descricao='Importacao CIDIS 2026: roster atual, ferias, buffers e escala futura desde 03/08/2026.',
             dados_novos={
                 'usuarios': len(USUARIOS_CIDIS_2026),
                 'ex_gerentes_desativados': EX_GERENTES_CIDIS_2026,
@@ -355,6 +363,7 @@ class Command(BaseCommand):
         importados = 0
         for d in sorted(por_data):
             papel, nome = sorted(por_data[d], key=lambda item: prioridade.get(item[0], 9))[0]
+            papel_importado = 'S' if d >= DATA_CORTE_HISTORICO and papel in {'S1', 'S2'} else papel
             tipo = meta.get(d)
             EscalaDia.objects.create(
                 data=d,
@@ -367,32 +376,32 @@ class Command(BaseCommand):
                 manual=d >= DATA_CORTE_HISTORICO,
                 status='MANUAL' if d >= DATA_CORTE_HISTORICO else 'FECHADA',
                 observacao=(
-                    f'Historico CIDIS 2026 importado da marcacao {papel}; '
-                    'S1/S2 pre-corte contam no PL inicial.'
+                    f'CIDIS 2026 importado da marcacao {papel_importado}; '
+                    'S1/S2 so contam como legado ate 31/05/2026.'
                 ),
             )
             importados += 1
-        self.stdout.write(f'  [OK] {importados} dias historicos importados ate 09/07/2026.')
+        self.stdout.write(f'  [OK] {importados} dias fixos importados ate 02/08/2026.')
 
     def _travar_historico(self):
-        for mes in range(1, 7):
+        for mes in range(1, 8):
             MesFechado.objects.update_or_create(
                 ano=2026,
                 mes=mes,
                 defaults={
                     'status': 'BLOQUEADO',
-                    'motivo': 'Historico CIDIS 2026 importado ate 30/06/2026.',
+                    'motivo': 'CIDIS 2026 importado: legado ate 31/05 e fixos ate 31/07.',
                 },
             )
             EscalaDia.objects.filter(data__year=2026, data__month=mes).update(status='FECHADA')
-        self.stdout.write('  [OK] Jan-Jun/2026 travados como historico.')
+        self.stdout.write('  [OK] Jan-Jul/2026 travados como historico/fixos.')
 
     def _limpar_futuro(self):
-        MesFechado.objects.filter(ano=2026, mes__gte=7).delete()
+        MesFechado.objects.filter(ano=2026, mes__gte=8).delete()
         MesFechado.objects.filter(ano__gte=2027).delete()
         EscalaDia.objects.filter(data__gte=GERACAO_FUTURA_INICIO).delete()
-        EscalaBloco.objects.filter(data_inicio__gte=DATA_CORTE_HISTORICO).delete()
-        self.stdout.write('  [OK] Escala futura desde 10/07/2026 limpa para redistribuicao.')
+        EscalaBloco.objects.filter(data_inicio__gte=GERACAO_FUTURA_INICIO).delete()
+        self.stdout.write('  [OK] Escala futura desde 03/08/2026 limpa para redistribuicao.')
 
     def _criar_feriados(self):
         count = 0

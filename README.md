@@ -16,11 +16,12 @@ Este repositorio e da Escala Gerencial. O dominio principal `daesung.com.br` per
 - Existe apenas um gerente escalado por dia.
 - O gerente do dia fica somente de sobreaviso.
 - Nao existe mais separacao operacional entre `S1` e `S2`.
-- O corte da regra nova e `2026-07-01`.
-- Janeiro a junho/2026 ficam como historico travado.
-- Os marcadores antigos `S1` e `S2` de janeiro a junho contam como plantoes historicos.
+- O corte da regra nova e `2026-06-01`.
+- Janeiro a maio/2026 ficam como historico legado travado.
+- Junho, julho e 01-02/08/2026 ficam preservados como escala fixa importada.
+- Os marcadores antigos `S1` e `S2` de janeiro a maio contam como plantoes historicos.
 - Finais de semana, feriados e feriadoes nao tem gerente presencial.
-- O mesmo gerente nao pode ser escalado em dois dias consecutivos a partir de `2026-07-01`.
+- O mesmo gerente nao pode ser escalado em dois dias consecutivos a partir de `2026-06-01`.
 - A distribuicao usa a proporcao entre plantoes e oportunidades disponiveis.
 - Ferias e bloqueios impedem escala no periodo cadastrado.
 - Ferias tambem bloqueiam automaticamente sabados/domingos nos 2 dias imediatamente antes do inicio e nos 2 dias imediatamente depois do fim, quando esses dias cairem no fim de semana.
@@ -37,10 +38,11 @@ O comando `python manage.py importar_planilha_atual` aplica a planilha CIDIS 202
 - cadastra codigo legado, lotacao e telefone;
 - importa ferias e indisponibilidades da planilha;
 - cria buffers automaticos de fim de semana antes/depois das ferias;
-- contabiliza o historico de janeiro a 09/07/2026;
-- trava janeiro a junho/2026;
-- limpa escalas futuras a partir de 10/07/2026;
-- redistribui de 10/07/2026 a dezembro/2026.
+- contabiliza o legado de janeiro a maio/2026;
+- preserva as escalas fixas de junho, julho e 01-02/08/2026 como sobreaviso unico;
+- trava janeiro a julho/2026;
+- limpa escalas futuras a partir de 03/08/2026;
+- redistribui de 03/08/2026 a dezembro/2026.
 
 `seed_initial_data` continua existindo por compatibilidade, mas delega para `importar_planilha_atual`.
 
@@ -53,7 +55,7 @@ O comando `python manage.py importar_planilha_atual` aplica a planilha CIDIS 202
 - Cadastro de ferias, faltas, treinamentos, licencas e indisponibilidades.
 - Redistribuicao automatica ao adicionar, editar ou remover bloqueios.
 - Edicao manual de um dia de escala.
-- Troca do gerente de sobreaviso em data especifica.
+- Solicitação de troca entre gerentes com aceite do gerente destino e aprovação final do administrador.
 - Cadastro de feriados e feriadoes manuais.
 - Relatorios de distribuicao, dias disponiveis, percentual de carga, ferias, bloqueios, feriados e feriadoes.
 - Graficos de carga proporcional, composicao dos sobreavisos e impacto de ferias/bloqueios.
@@ -143,7 +145,7 @@ python manage.py collectstatic --noinput --clear
 Validacoes esperadas:
 
 - Nenhum registro gerado deve ter `s2` preenchido.
-- Nao deve haver gerente repetido em dias consecutivos a partir de `2026-07-01`.
+- Nao deve haver gerente repetido em dias consecutivos a partir de `2026-06-01`.
 - Ninguem deve estar escalado durante ferias ou bloqueio.
 - Todo feriado nacional, estadual do Parana e municipal de Curitiba deve ter gerente de sobreaviso.
 - O calendario mensal deve exibir somente o gerente de sobreaviso.

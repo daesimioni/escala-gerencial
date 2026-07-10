@@ -5,7 +5,8 @@ from django.contrib import admin
 
 from .models import (
     BloqueioUsuario, ConfiguracaoSistema, EscalaBloco, EscalaDia,
-    Feriado, Feriadao, GrupoEscala, HistoricoAlteracao, UsuarioEscala,
+    Feriado, Feriadao, GrupoEscala, HistoricoAlteracao, SolicitacaoTroca,
+    UsuarioEscala,
 )
 
 
@@ -62,6 +63,25 @@ class EscalaDiaAdmin(admin.ModelAdmin):
 class EscalaBlocoAdmin(admin.ModelAdmin):
     list_display = ['tipo', 'nome', 'data_inicio', 'data_fim']
     list_filter = ['tipo']
+
+
+@admin.register(SolicitacaoTroca)
+class SolicitacaoTrocaAdmin(admin.ModelAdmin):
+    list_display = [
+        'created_at', 'status', 'gerente_origem', 'data_origem',
+        'gerente_destino', 'data_destino',
+    ]
+    list_filter = ['status', 'created_at']
+    search_fields = ['gerente_origem__nome', 'gerente_destino__nome', 'motivo']
+    readonly_fields = ['created_at', 'updated_at']
+
+    @admin.display(ordering='escala_origem__data')
+    def data_origem(self, obj):
+        return obj.escala_origem.data
+
+    @admin.display(ordering='escala_destino__data')
+    def data_destino(self, obj):
+        return obj.escala_destino.data
 
 
 @admin.register(HistoricoAlteracao)

@@ -13,17 +13,19 @@ from django.db import models as dm
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
+from django.views.decorators.http import require_POST
 
 from .forms import (
     BloqueioUsuarioForm, EscalaDiaForm, FeriadoForm, FeriadaoForm,
-    GeracaoEscalaForm, TrocaEscalaForm,
+    GeracaoEscalaForm, SolicitacaoTrocaForm,
 )
 from .models import (
     AlertaSistema, BloqueioUsuario, ConfiguracaoSistema, EscalaBloco,
     EscalaDia, Feriado, Feriadao, GrupoEscala, HistoricoAlteracao,
-    MesFechado, UsuarioEscala,
+    MesFechado, SolicitacaoTroca, UsuarioEscala,
 )
 from .services import (
+    aplicar_troca_sobreaviso,
     analisar_impacto_ferias, fechar_mes, gerar_escala_mensal,
     gerar_escala_anual, gerar_escala_periodo, get_alertas_desequilibrio,
     calcular_resumo_anual, calcular_resumo_mensal, get_blocos_cobertura,
@@ -32,6 +34,17 @@ from .services import (
     sincronizar_buffers_ferias_usuario, validar_dia,
     _atualizar_contadores_usuarios,
 )
+
+
+def _usuario_escala_do_login(user):
+    return getattr(user, 'usuario_escala', None)
+
+
+def _exigir_staff(request):
+    if request.user.is_staff:
+        return None
+    messages.error(request, 'Apenas administradores podem fazer esta alteracao direta.')
+    return redirect('dashboard')
 
 
 def _get_calendar_context(ano, mes):
@@ -253,6 +266,7 @@ def calendario(request, ano=None, mes=None):
     ctx['grupos'] = GrupoEscala.objects.all()
     ctx['mes_fechado'] = is_mes_fechado(ano, mes)
     ctx['user_is_staff'] = request.user.is_staff
+    ctx['usuario_escala_atual'] = _usuario_escala_do_login(request.user)
 
     # Summary table
     from .services import calcular_resumo_mensal
@@ -306,6 +320,9 @@ def calendario_anual(request, ano=None):
 @login_required
 def editar_dia(request, ano, mes, dia):
     """Edit the on-call manager for a specific day."""
+    denied = _exigir_staff(request)
+    if denied:
+        return denied
     data = date(ano, mes, dia)
     escala = EscalaDia.objects.filter(data=data).first()
 
@@ -359,6 +376,9 @@ def editar_dia(request, ano, mes, dia):
 @login_required
 def limpar_dia(request, ano, mes, dia):
     """Clear the on-call manager for a day."""
+    denied = _exigir_staff(request)
+    if denied:
+        return denied
     data = date(ano, mes, dia)
     if request.method == 'POST':
         EscalaDia.objects.filter(data=data).delete()
@@ -383,6 +403,9 @@ def usuarios(request):
 @login_required
 def editar_usuario(request, pk):
     """Edit user details."""
+    denied = _exigir_staff(request)
+    if denied:
+        return denied
     usuario = get_object_or_404(UsuarioEscala, pk=pk)
     if request.method == 'POST':
         usuario.nome = request.POST.get('nome', usuario.nome)
@@ -416,6 +439,9 @@ def bloqueios(request):
 @login_required
 def adicionar_bloqueio(request):
     """Add a new block for a user."""
+    denied = _exigir_staff(request)
+    if denied:
+        return denied
     if request.method == 'POST':
         form = BloqueioUsuarioForm(request.POST)
         if form.is_valid():
@@ -447,6 +473,9 @@ def adicionar_bloqueio(request):
 @login_required
 def editar_bloqueio(request, pk):
     """Edit an existing block."""
+    denied = _exigir_staff(request)
+    if denied:
+        return denied
     blk = get_object_or_404(BloqueioUsuario, pk=pk)
     usuario_anterior = blk.usuario
     tipo_anterior = blk.tipo
@@ -478,6 +507,9 @@ def editar_bloqueio(request, pk):
 @login_required
 def remover_bloqueio(request, pk):
     """Remove a block."""
+    denied = _exigir_staff(request)
+    if denied:
+        return denied
     blk = get_object_or_404(BloqueioUsuario, pk=pk)
     if request.method == 'POST':
         data_inicio = blk.data_inicio
@@ -510,6 +542,9 @@ def feriados(request):
 @login_required
 def adicionar_feriado(request):
     """Add a new holiday."""
+    denied = _exigir_staff(request)
+    if denied:
+        return denied
     if request.method == 'POST':
         form = FeriadoForm(request.POST)
         if form.is_valid():
@@ -525,6 +560,9 @@ def adicionar_feriado(request):
 @login_required
 def editar_feriado(request, pk):
     """Edit a holiday."""
+    denied = _exigir_staff(request)
+    if denied:
+        return denied
     feriado = get_object_or_404(Feriado, pk=pk)
     if request.method == 'POST':
         form = FeriadoForm(request.POST, instance=feriado)
@@ -550,6 +588,9 @@ def feriadoes(request):
 @login_required
 def adicionar_feriadao(request):
     """Manually add a feriadão block."""
+    denied = _exigir_staff(request)
+    if denied:
+        return denied
     if request.method == 'POST':
         form = FeriadaoForm(request.POST)
         if form.is_valid():
@@ -570,49 +611,161 @@ def adicionar_feriadao(request):
 
 @login_required
 def trocar_escala(request):
-    """Replace the on-call manager on a given date."""
+    """Create and manage on-call swap requests."""
+    gerente_atual = _usuario_escala_do_login(request.user)
+    initial = {}
+    origem_id = request.GET.get('origem')
+    if origem_id:
+        initial['escala_origem'] = origem_id
+
     if request.method == 'POST':
-        form = TrocaEscalaForm(request.POST)
+        form = SolicitacaoTrocaForm(request.POST, gerente_atual=gerente_atual)
         if form.is_valid():
-            data = form.cleaned_data['data']
-            destino = form.cleaned_data['usuario_destino']
-
-            escala = EscalaDia.objects.filter(data=data).first()
-            if not escala:
-                messages.error(request, f'Não há escala cadastrada para {data}.')
-                return redirect('trocar_escala')
-
-            anterior_id = escala.s1_id
-            problemas = validar_dia(data, destino, None)
-            erros = [p for p in problemas if p['tipo'] == 'erro']
-            if erros:
-                for e in erros:
-                    messages.error(request, e['msg'])
-                return redirect('trocar_escala')
-
-            escala.s1 = destino
-            escala.s2 = None
-            escala.manual = True
-            escala.status = 'MANUAL'
-            escala.editado_por = request.user
-            escala.editado_em = timezone.now()
-            escala.save()
-            _atualizar_contadores_usuarios()
-
+            origem = form.cleaned_data['escala_origem']
+            destino = form.cleaned_data['escala_destino']
+            solicitacao = SolicitacaoTroca.objects.create(
+                solicitante_user=request.user,
+                gerente_solicitante=gerente_atual,
+                escala_origem=origem,
+                gerente_origem=origem.s1,
+                escala_destino=destino,
+                gerente_destino=destino.s1,
+                motivo=form.cleaned_data.get('motivo', ''),
+            )
             HistoricoAlteracao.objects.create(
                 usuario=request.user,
                 tipo='TROCA_ESCALA',
-                descricao=f'Troca em {data}: novo sobreaviso {destino.nome}',
-                dados_anteriores={'s1': anterior_id},
-                dados_novos={'s1': destino.id},
+                descricao=(
+                    f'Solicitacao de troca #{solicitacao.id}: '
+                    f'{origem.data:%d/%m/%Y} por {destino.data:%d/%m/%Y}'
+                ),
+                dados_novos={'solicitacao': solicitacao.id},
             )
-
-            messages.success(request, f'Sobreaviso atualizado para {data}.')
-            return redirect('calendario_mes', ano=data.year, mes=data.month)
+            messages.success(request, 'Solicitacao enviada ao outro gerente.')
+            return redirect('trocar_escala')
     else:
-        form = TrocaEscalaForm(initial={'data': date.today()})
+        form = SolicitacaoTrocaForm(initial=initial, gerente_atual=gerente_atual)
 
-    return render(request, 'escalas/trocar_escala.html', {'form': form})
+    minhas_solicitacoes = SolicitacaoTroca.objects.none()
+    aguardando_minha_resposta = SolicitacaoTroca.objects.none()
+    if gerente_atual:
+        minhas_solicitacoes = SolicitacaoTroca.objects.filter(
+            gerente_solicitante=gerente_atual,
+        ).select_related(
+            'gerente_origem', 'gerente_destino', 'escala_origem', 'escala_destino'
+        )[:20]
+        aguardando_minha_resposta = SolicitacaoTroca.objects.filter(
+            gerente_destino=gerente_atual,
+            status=SolicitacaoTroca.STATUS_PENDENTE_DESTINO,
+        ).select_related(
+            'gerente_origem', 'gerente_destino', 'escala_origem', 'escala_destino'
+        )
+
+    aguardando_admin = SolicitacaoTroca.objects.none()
+    if request.user.is_staff:
+        aguardando_admin = SolicitacaoTroca.objects.filter(
+            status=SolicitacaoTroca.STATUS_PENDENTE_ADMIN,
+        ).select_related(
+            'gerente_origem', 'gerente_destino', 'escala_origem', 'escala_destino'
+        )
+
+    return render(request, 'escalas/trocar_escala.html', {
+        'form': form,
+        'gerente_atual': gerente_atual,
+        'minhas_solicitacoes': minhas_solicitacoes,
+        'aguardando_minha_resposta': aguardando_minha_resposta,
+        'aguardando_admin': aguardando_admin,
+    })
+
+
+@login_required
+@require_POST
+def aceitar_solicitacao_troca(request, pk):
+    gerente_atual = _usuario_escala_do_login(request.user)
+    solicitacao = get_object_or_404(SolicitacaoTroca, pk=pk)
+    if not gerente_atual or solicitacao.gerente_destino_id != gerente_atual.id:
+        messages.error(request, 'Voce nao pode responder esta solicitacao.')
+        return redirect('trocar_escala')
+    if solicitacao.status != SolicitacaoTroca.STATUS_PENDENTE_DESTINO:
+        messages.warning(request, 'Esta solicitacao nao esta mais pendente.')
+        return redirect('trocar_escala')
+
+    solicitacao.status = SolicitacaoTroca.STATUS_PENDENTE_ADMIN
+    solicitacao.destino_respondido_por = request.user
+    solicitacao.destino_respondido_em = timezone.now()
+    solicitacao.resposta_destino = request.POST.get('resposta_destino', '')
+    solicitacao.save(update_fields=[
+        'status', 'destino_respondido_por', 'destino_respondido_em',
+        'resposta_destino', 'updated_at',
+    ])
+    messages.success(request, 'Troca aceita. Aguardando aprovacao do administrador.')
+    return redirect('trocar_escala')
+
+
+@login_required
+@require_POST
+def recusar_solicitacao_troca(request, pk):
+    gerente_atual = _usuario_escala_do_login(request.user)
+    solicitacao = get_object_or_404(SolicitacaoTroca, pk=pk)
+    if not gerente_atual or solicitacao.gerente_destino_id != gerente_atual.id:
+        messages.error(request, 'Voce nao pode responder esta solicitacao.')
+        return redirect('trocar_escala')
+    if solicitacao.status != SolicitacaoTroca.STATUS_PENDENTE_DESTINO:
+        messages.warning(request, 'Esta solicitacao nao esta mais pendente.')
+        return redirect('trocar_escala')
+
+    solicitacao.status = SolicitacaoTroca.STATUS_RECUSADA_DESTINO
+    solicitacao.destino_respondido_por = request.user
+    solicitacao.destino_respondido_em = timezone.now()
+    solicitacao.resposta_destino = request.POST.get('resposta_destino', '')
+    solicitacao.save(update_fields=[
+        'status', 'destino_respondido_por', 'destino_respondido_em',
+        'resposta_destino', 'updated_at',
+    ])
+    messages.info(request, 'Solicitacao recusada.')
+    return redirect('trocar_escala')
+
+
+@login_required
+@require_POST
+def aprovar_solicitacao_troca(request, pk):
+    denied = _exigir_staff(request)
+    if denied:
+        return denied
+    solicitacao = get_object_or_404(SolicitacaoTroca, pk=pk)
+    ok, erros = aplicar_troca_sobreaviso(
+        solicitacao,
+        usuario_log=request.user,
+        resposta_admin=request.POST.get('resposta_admin', ''),
+    )
+    if ok:
+        messages.success(request, 'Troca aprovada e aplicada na escala.')
+    else:
+        for erro in erros:
+            messages.error(request, erro)
+    return redirect('trocar_escala')
+
+
+@login_required
+@require_POST
+def rejeitar_solicitacao_troca(request, pk):
+    denied = _exigir_staff(request)
+    if denied:
+        return denied
+    solicitacao = get_object_or_404(SolicitacaoTroca, pk=pk)
+    if solicitacao.status != SolicitacaoTroca.STATUS_PENDENTE_ADMIN:
+        messages.warning(request, 'Esta solicitacao nao esta aguardando aprovacao.')
+        return redirect('trocar_escala')
+    solicitacao.status = SolicitacaoTroca.STATUS_REJEITADA_ADMIN
+    solicitacao.admin_respondido_por = request.user
+    solicitacao.admin_respondido_em = timezone.now()
+    solicitacao.resposta_admin = request.POST.get('resposta_admin', '')
+    solicitacao.save(update_fields=[
+        'status', 'admin_respondido_por', 'admin_respondido_em',
+        'resposta_admin', 'updated_at',
+    ])
+    messages.info(request, 'Solicitacao rejeitada pelo administrador.')
+    return redirect('trocar_escala')
 
 
 # ─── Reports ─────────────────────────────────────────────────────────────────
@@ -820,6 +973,9 @@ def reabrir_mes_view(request, ano, mes):
 @login_required
 def gerar_escala(request):
     """Trigger scale generation for a specific month or period."""
+    denied = _exigir_staff(request)
+    if denied:
+        return denied
     if request.method == 'POST':
         form = GeracaoEscalaForm(request.POST)
         if form.is_valid():

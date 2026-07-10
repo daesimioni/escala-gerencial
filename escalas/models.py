@@ -196,6 +196,94 @@ class EscalaDia(models.Model):
         return False
 
 
+class SolicitacaoTroca(models.Model):
+    STATUS_PENDENTE_DESTINO = 'PENDENTE_DESTINO'
+    STATUS_RECUSADA_DESTINO = 'RECUSADA_DESTINO'
+    STATUS_PENDENTE_ADMIN = 'PENDENTE_ADMIN'
+    STATUS_APROVADA = 'APROVADA'
+    STATUS_REJEITADA_ADMIN = 'REJEITADA_ADMIN'
+    STATUS_CANCELADA = 'CANCELADA'
+
+    STATUS_CHOICES = [
+        (STATUS_PENDENTE_DESTINO, 'Aguardando gerente destino'),
+        (STATUS_RECUSADA_DESTINO, 'Recusada pelo gerente destino'),
+        (STATUS_PENDENTE_ADMIN, 'Aguardando aprovacao do administrador'),
+        (STATUS_APROVADA, 'Aprovada'),
+        (STATUS_REJEITADA_ADMIN, 'Rejeitada pelo administrador'),
+        (STATUS_CANCELADA, 'Cancelada'),
+    ]
+
+    solicitante_user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='solicitacoes_troca_criadas',
+    )
+    gerente_solicitante = models.ForeignKey(
+        UsuarioEscala,
+        on_delete=models.PROTECT,
+        related_name='solicitacoes_troca_solicitante',
+    )
+    escala_origem = models.ForeignKey(
+        EscalaDia,
+        on_delete=models.PROTECT,
+        related_name='solicitacoes_troca_origem',
+    )
+    gerente_origem = models.ForeignKey(
+        UsuarioEscala,
+        on_delete=models.PROTECT,
+        related_name='solicitacoes_troca_origem',
+    )
+    escala_destino = models.ForeignKey(
+        EscalaDia,
+        on_delete=models.PROTECT,
+        related_name='solicitacoes_troca_destino',
+    )
+    gerente_destino = models.ForeignKey(
+        UsuarioEscala,
+        on_delete=models.PROTECT,
+        related_name='solicitacoes_troca_destino',
+    )
+    motivo = models.TextField(blank=True)
+    status = models.CharField(
+        max_length=30,
+        choices=STATUS_CHOICES,
+        default=STATUS_PENDENTE_DESTINO,
+    )
+    resposta_destino = models.TextField(blank=True)
+    destino_respondido_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='solicitacoes_troca_respondidas_destino',
+    )
+    destino_respondido_em = models.DateTimeField(null=True, blank=True)
+    resposta_admin = models.TextField(blank=True)
+    admin_respondido_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='solicitacoes_troca_respondidas_admin',
+    )
+    admin_respondido_em = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Solicitacao de Troca'
+        verbose_name_plural = 'Solicitacoes de Troca'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return (
+            f'Troca {self.escala_origem.data} ({self.gerente_origem.nome}) '
+            f'por {self.escala_destino.data} ({self.gerente_destino.nome})'
+        )
+
+
 class EscalaBloco(models.Model):
     TIPO_CHOICES = [
         ('FIM_DE_SEMANA', 'Fim de Semana'),

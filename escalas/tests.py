@@ -10,7 +10,9 @@ from django.test import TestCase
 from django.urls import reverse
 from django.utils.html import strip_tags
 
-from .models import BloqueioUsuario, EscalaDia, GrupoEscala, UsuarioEscala
+from .models import (
+    BloqueioUsuario, EscalaDia, GrupoEscala, SolicitacaoTroca, UsuarioEscala,
+)
 from .services import (
     calcular_pascoa, calcular_resumo_mensal, detectar_feriadoes, gerar_escala_mensal,
     get_blocos_cobertura, get_usuarios_disponiveis, MOTIVO_BUFFER_FERIAS,
@@ -409,6 +411,79 @@ class WorkflowViewTests(TestCase):
         self.assertNotIn('F Copel', visible_text)
         self.assertNotIn('N Copel', visible_text)
 
+    def test_usuario_padrao_nao_edita_escala_diretamente(self):
+        gerente = self.usuarios[0]
+        usuario_padrao = User.objects.create_user(username='gerente.a', password='x')
+        gerente.user = usuario_padrao
+        gerente.save(update_fields=['user'])
+
+        outro = self.usuarios[1]
+        escala = EscalaDia.objects.create(data=date(2026, 8, 8), s1=gerente)
+        self.client.force_login(usuario_padrao)
+
+        response = self.client.post(reverse('editar_dia', kwargs={
+            'ano': 2026, 'mes': 8, 'dia': 8,
+        }), {
+            's1': outro.id,
+            'observacao': 'tentativa direta',
+            'manual': 'on',
+        })
+        self.assertEqual(response.status_code, 302)
+        escala.refresh_from_db()
+        self.assertEqual(escala.s1_id, gerente.id)
+
+    def test_fluxo_de_troca_exige_aceite_e_aprovacao_admin(self):
+        gerente_a = self.usuarios[0]
+        gerente_b = self.usuarios[1]
+        user_a = User.objects.create_user(username='gerente.a', password='x')
+        user_b = User.objects.create_user(username='gerente.b', password='x')
+        gerente_a.user = user_a
+        gerente_b.user = user_b
+        gerente_a.save(update_fields=['user'])
+        gerente_b.save(update_fields=['user'])
+
+        escala_a = EscalaDia.objects.create(data=date(2026, 8, 8), s1=gerente_a, fim_de_semana=True)
+        escala_b = EscalaDia.objects.create(data=date(2026, 8, 15), s1=gerente_b, fim_de_semana=True)
+
+        self.client.force_login(user_a)
+        response = self.client.post(reverse('trocar_escala'), {
+            'escala_origem': escala_a.id,
+            'gerente_destino': gerente_b.id,
+            'escala_destino': escala_b.id,
+            'motivo': 'Teste de troca',
+        })
+        self.assertEqual(response.status_code, 302)
+
+        solicitacao = SolicitacaoTroca.objects.get()
+        self.assertEqual(solicitacao.status, SolicitacaoTroca.STATUS_PENDENTE_DESTINO)
+        escala_a.refresh_from_db()
+        escala_b.refresh_from_db()
+        self.assertEqual(escala_a.s1_id, gerente_a.id)
+        self.assertEqual(escala_b.s1_id, gerente_b.id)
+
+        self.client.force_login(user_b)
+        response = self.client.post(reverse('aceitar_solicitacao_troca', kwargs={'pk': solicitacao.id}))
+        self.assertEqual(response.status_code, 302)
+        solicitacao.refresh_from_db()
+        self.assertEqual(solicitacao.status, SolicitacaoTroca.STATUS_PENDENTE_ADMIN)
+        escala_a.refresh_from_db()
+        escala_b.refresh_from_db()
+        self.assertEqual(escala_a.s1_id, gerente_a.id)
+        self.assertEqual(escala_b.s1_id, gerente_b.id)
+
+        self.client.force_login(self.admin_user)
+        response = self.client.post(reverse('aprovar_solicitacao_troca', kwargs={'pk': solicitacao.id}))
+        self.assertEqual(response.status_code, 302)
+
+        solicitacao.refresh_from_db()
+        escala_a.refresh_from_db()
+        escala_b.refresh_from_db()
+        self.assertEqual(solicitacao.status, SolicitacaoTroca.STATUS_APROVADA)
+        self.assertEqual(escala_a.s1_id, gerente_b.id)
+        self.assertEqual(escala_b.s1_id, gerente_a.id)
+        self.assertTrue(escala_a.manual)
+        self.assertTrue(escala_b.manual)
+
 
 class VacationBufferTests(TestCase):
     def setUp(self):
@@ -525,6 +600,24 @@ class ImportarPlanilhaAtualCommandTests(TestCase):
             EscalaDia.objects.get(data=date(2026, 7, 5)).s1.nome,
             'RONALDO JR',
         )
+        self.assertEqual(
+            EscalaDia.objects.get(data=date(2026, 7, 11)).s1.nome,
+            'HENRY WILLIAM',
+        )
+        self.assertEqual(
+            EscalaDia.objects.get(data=date(2026, 7, 25)).s1.nome,
+            'SAMUEL BITELO',
+        )
+        self.assertEqual(
+            EscalaDia.objects.get(data=date(2026, 8, 1)).s1.nome,
+            'JEZIEL',
+        )
+        self.assertTrue(EscalaDia.objects.get(data=date(2026, 8, 1)).manual)
+        self.assertEqual(
+            EscalaDia.objects.get(data=date(2026, 8, 2)).s1.nome,
+            'MARCOS VINICIUS',
+        )
+        self.assertTrue(EscalaDia.objects.get(data=date(2026, 8, 2)).manual)
 
         ronaldo = UsuarioEscala.objects.get(nome='RONALDO JR')
         self.assertTrue(
@@ -536,6 +629,7 @@ class ImportarPlanilhaAtualCommandTests(TestCase):
             ).exists()
         )
         self.assertFalse(
-            EscalaDia.objects.filter(data__gte=date(2026, 7, 10)).exclude(s2=None).exists()
+            EscalaDia.objects.filter(data__gte=date(2026, 8, 3)).exclude(s2=None).exists()
         )
+        self.assertTrue(EscalaDia.objects.filter(data__gte=date(2026, 8, 3), manual=False).exists())
         self.assertFalse(EscalaDia.objects.filter(data__gte=date(2027, 1, 1)).exists())

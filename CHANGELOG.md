@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-07-10 - Corte junho/2026 e solicitacao de troca
+
+- Ajustado o corte operacional: S1/S2 valem como legado somente ate 31/05/2026; de 01/06/2026 em diante a escala usa um unico sobreaviso.
+- `importar_planilha_atual` agora preserva as escalas fixas de junho, julho e 01-02/08/2026, e redistribui automaticamente somente de 03/08/2026 a 12/2026.
+- Adicionado fluxo de troca: gerente solicita, gerente destino aceita/recusa, administrador aprova/rejeita, e a escala so muda na aprovacao.
+- Rotas de edicao direta de escala, ferias/bloqueios, feriados, feriadoes e geracao ficaram restritas a administradores.
+- Validacao local: `python manage.py check` OK e `python manage.py test` com 33 testes OK.
+
 ## 2026-07-09 - Importacao CIDIS 2026 e buffer de ferias
 
 - Atualizado `importar_planilha_atual` para usar a base CIDIS 2026, preservar historico ate 09/07/2026 e redistribuir de 10/07/2026 a 12/2026.

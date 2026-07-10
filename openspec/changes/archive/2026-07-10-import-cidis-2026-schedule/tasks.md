@@ -17,7 +17,7 @@
 - [x] 3.1 Validate OpenSpec change.
 - [x] 3.2 Run Django checks and tests locally.
 - [x] 3.3 Run the import command locally and validate generated schedule.
-- [ ] 3.4 Commit and push to GitHub.
-- [ ] 3.5 Deploy to beta.daesung.com.br.
-- [ ] 3.6 Back up production database and run the import command remotely.
-- [ ] 3.7 Validate production pages and archive the OpenSpec change.
+- [x] 3.4 Commit and push to GitHub.
+- [x] 3.5 Deploy to beta.daesung.com.br.
+- [x] 3.6 Back up production database and run the import command remotely.
+- [x] 3.7 Validate production pages and archive the OpenSpec change.

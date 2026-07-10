@@ -13,7 +13,8 @@ from django.utils.html import strip_tags
 from .models import BloqueioUsuario, EscalaDia, GrupoEscala, UsuarioEscala
 from .services import (
     calcular_pascoa, calcular_resumo_mensal, detectar_feriadoes, gerar_escala_mensal,
-    get_blocos_cobertura, get_usuarios_disponiveis, validar_dia,
+    get_blocos_cobertura, get_usuarios_disponiveis, MOTIVO_BUFFER_FERIAS,
+    sincronizar_buffers_ferias_usuario, validar_dia,
 )
 
 
@@ -409,6 +410,46 @@ class WorkflowViewTests(TestCase):
         self.assertNotIn('N Copel', visible_text)
 
 
+class VacationBufferTests(TestCase):
+    def setUp(self):
+        self.grupo = GrupoEscala.objects.create(nome='A')
+        self.usuario = UsuarioEscala.objects.create(nome='Gerente Teste', grupo=self.grupo)
+
+    def test_ferias_criam_buffer_de_fim_de_semana_antes_e_depois(self):
+        BloqueioUsuario.objects.create(
+            usuario=self.usuario,
+            tipo='FERIAS',
+            data_inicio=date(2026, 7, 13),  # Monday
+            data_fim=date(2026, 7, 17),     # Friday
+            motivo='Teste',
+        )
+
+        sincronizar_buffers_ferias_usuario(self.usuario)
+
+        buffers = BloqueioUsuario.objects.filter(
+            usuario=self.usuario,
+            motivo__startswith=MOTIVO_BUFFER_FERIAS,
+        )
+        datas = set()
+        for blk in buffers:
+            cursor = blk.data_inicio
+            while cursor <= blk.data_fim:
+                datas.add(cursor)
+                cursor += timedelta(days=1)
+
+        self.assertEqual(
+            datas,
+            {
+                date(2026, 7, 11),
+                date(2026, 7, 12),
+                date(2026, 7, 18),
+                date(2026, 7, 19),
+            },
+        )
+        self.assertNotIn(self.usuario, get_usuarios_disponiveis(date(2026, 7, 11)))
+        self.assertNotIn(self.usuario, get_usuarios_disponiveis(date(2026, 7, 19)))
+
+
 class UsuarioPadraoCommandTests(TestCase):
     def setUp(self):
         self.grupo = GrupoEscala.objects.create(nome='A')
@@ -439,3 +480,62 @@ class UsuarioPadraoCommandTests(TestCase):
 
         self.assertTrue(admin.is_superuser)
         self.assertTrue(admin.check_password('admin123'))
+
+
+class ImportarPlanilhaAtualCommandTests(TestCase):
+    def test_importa_cidis_2026_com_roster_atual_e_buffers(self):
+        grupo_antigo = GrupoEscala.objects.create(nome='OLD')
+        usuario_antigo = UsuarioEscala.objects.create(nome='USUARIO ANTIGO', grupo=grupo_antigo)
+        EscalaDia.objects.create(
+            data=date(2027, 1, 3),
+            s1=usuario_antigo,
+            fim_de_semana=True,
+        )
+
+        call_command('importar_planilha_atual', stdout=StringIO())
+
+        ativos = set(UsuarioEscala.objects.filter(ativo=True).values_list('nome', flat=True))
+        self.assertEqual(
+            ativos,
+            {
+                'SAMUEL BITELO',
+                'HENRY WILLIAM',
+                'JEZIEL',
+                'PANGARTTE',
+                'JULIANO MOSKO',
+                'MARCOS VINICIUS',
+                'RONALDO JR',
+                'LUIZ ROBERTO',
+                'DIONIZIO',
+            },
+        )
+        self.assertFalse(
+            UsuarioEscala.objects.filter(
+                nome__in=['GUSTAVO THEODOR', 'JEFFERSON FRANCO', 'MARCELO'],
+                ativo=True,
+            ).exists()
+        )
+
+        self.assertEqual(
+            EscalaDia.objects.get(data=date(2026, 7, 4)).s1.nome,
+            'MARCOS VINICIUS',
+        )
+        self.assertTrue(EscalaDia.objects.get(data=date(2026, 7, 4)).manual)
+        self.assertEqual(
+            EscalaDia.objects.get(data=date(2026, 7, 5)).s1.nome,
+            'RONALDO JR',
+        )
+
+        ronaldo = UsuarioEscala.objects.get(nome='RONALDO JR')
+        self.assertTrue(
+            BloqueioUsuario.objects.filter(
+                usuario=ronaldo,
+                motivo__startswith=MOTIVO_BUFFER_FERIAS,
+                data_inicio__lte=date(2026, 7, 25),
+                data_fim__gte=date(2026, 7, 25),
+            ).exists()
+        )
+        self.assertFalse(
+            EscalaDia.objects.filter(data__gte=date(2026, 7, 10)).exclude(s2=None).exists()
+        )
+        self.assertFalse(EscalaDia.objects.filter(data__gte=date(2027, 1, 1)).exists())

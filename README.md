@@ -23,21 +23,24 @@ Este repositorio e da Escala Gerencial. O dominio principal `daesung.com.br` per
 - O mesmo gerente nao pode ser escalado em dois dias consecutivos a partir de `2026-07-01`.
 - A distribuicao usa a proporcao entre plantoes e oportunidades disponiveis.
 - Ferias e bloqueios impedem escala no periodo cadastrado.
+- Ferias tambem bloqueiam automaticamente sabados/domingos nos 2 dias imediatamente antes do inicio e nos 2 dias imediatamente depois do fim, quando esses dias cairem no fim de semana.
 - Ao cadastrar, editar ou remover ferias/bloqueios, a escala e redistribuida automaticamente a partir da data afetada, preservando os dias anteriores do mes.
 - Ferias reduzem os dias disponiveis do gerente e nao criam divida de compensacao no retorno.
 - Meses fechados preservam o historico e nao sao regenerados automaticamente.
 
 ## Base da planilha atual
 
-O comando `python manage.py importar_planilha_atual` aplica a planilha usada como base em 2026:
+O comando `python manage.py importar_planilha_atual` aplica a planilha CIDIS 2026:
 
-- substitui `Copel 1` a `Copel 9` pelos gerentes reais;
+- mantem ativos apenas os 9 gerentes atuais da escala;
+- desativa gerentes fora do roster atual, incluindo Gustavo Theodor, Jefferson Franco e Marcelo;
 - cadastra codigo legado, lotacao e telefone;
 - importa ferias e indisponibilidades da planilha;
-- contabiliza o historico de janeiro a junho/2026;
+- cria buffers automaticos de fim de semana antes/depois das ferias;
+- contabiliza o historico de janeiro a 09/07/2026;
 - trava janeiro a junho/2026;
-- limpa a escala futura nao manual;
-- redistribui de julho/2026 a dezembro/2027.
+- limpa escalas futuras a partir de 10/07/2026;
+- redistribui de 10/07/2026 a dezembro/2026.
 
 `seed_initial_data` continua existindo por compatibilidade, mas delega para `importar_planilha_atual`.
 

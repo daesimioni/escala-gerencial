@@ -29,7 +29,8 @@ from .services import (
     calcular_resumo_anual, calcular_resumo_mensal, get_blocos_cobertura,
     get_meses_fechados, get_relatorio_usuarios,
     is_mes_fechado, reabrir_mes, regenerar_apos_data,
-    validar_dia, _atualizar_contadores_usuarios,
+    sincronizar_buffers_ferias_usuario, validar_dia,
+    _atualizar_contadores_usuarios,
 )
 
 
@@ -419,13 +420,19 @@ def adicionar_bloqueio(request):
         form = BloqueioUsuarioForm(request.POST)
         if form.is_valid():
             blk = form.save()
+            data_regeneracao = blk.data_inicio
+            if blk.tipo == 'FERIAS':
+                buffers = sincronizar_buffers_ferias_usuario(blk.usuario)
+                datas_buffer = [b.data_inicio for b in buffers]
+                if datas_buffer:
+                    data_regeneracao = min([data_regeneracao] + datas_buffer)
             HistoricoAlteracao.objects.create(
                 usuario=request.user,
                 tipo='ADICAO_BLOQUEIO',
                 descricao=f'{blk.get_tipo_display()} para {blk.usuario.nome}: {blk.data_inicio} a {blk.data_fim}',
             )
             # Regenerate affected period
-            criados, erros = regenerar_apos_data(blk.data_inicio, request.user)
+            criados, erros = regenerar_apos_data(data_regeneracao, request.user)
             messages.success(request, f'Bloqueio adicionado. Escala regenerada: {criados} dias.')
             if erros:
                 for e in erros:
@@ -441,11 +448,25 @@ def adicionar_bloqueio(request):
 def editar_bloqueio(request, pk):
     """Edit an existing block."""
     blk = get_object_or_404(BloqueioUsuario, pk=pk)
+    usuario_anterior = blk.usuario
+    tipo_anterior = blk.tipo
+    data_anterior = blk.data_inicio
     if request.method == 'POST':
         form = BloqueioUsuarioForm(request.POST, instance=blk)
         if form.is_valid():
-            form.save()
-            regenerar_apos_data(blk.data_inicio, request.user)
+            blk = form.save()
+            data_regeneracao = min(data_anterior, blk.data_inicio)
+            usuarios_sync = []
+            if tipo_anterior == 'FERIAS':
+                usuarios_sync.append(usuario_anterior)
+            if blk.tipo == 'FERIAS' and blk.usuario_id not in [u.id for u in usuarios_sync]:
+                usuarios_sync.append(blk.usuario)
+            for usuario in usuarios_sync:
+                buffers = sincronizar_buffers_ferias_usuario(usuario)
+                datas_buffer = [b.data_inicio for b in buffers]
+                if datas_buffer:
+                    data_regeneracao = min([data_regeneracao] + datas_buffer)
+            regenerar_apos_data(data_regeneracao, request.user)
             messages.success(request, 'Bloqueio atualizado. Escala regenerada.')
             return redirect('bloqueios')
     else:
@@ -460,7 +481,13 @@ def remover_bloqueio(request, pk):
     blk = get_object_or_404(BloqueioUsuario, pk=pk)
     if request.method == 'POST':
         data_inicio = blk.data_inicio
+        usuario = blk.usuario
+        tipo = blk.tipo
+        if tipo == 'FERIAS':
+            data_inicio = min(data_inicio, blk.data_inicio - timedelta(days=2))
         blk.delete()
+        if tipo == 'FERIAS':
+            sincronizar_buffers_ferias_usuario(usuario)
         HistoricoAlteracao.objects.create(
             usuario=request.user,
             tipo='REMOCAO_BLOQUEIO',

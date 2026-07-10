@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-07-09 - Importacao CIDIS 2026 e buffer de ferias
+
+- Atualizado `importar_planilha_atual` para usar a base CIDIS 2026, preservar historico ate 09/07/2026 e redistribuir de 10/07/2026 a 12/2026.
+- A importacao mantem ativos apenas os 9 gerentes atuais e desativa gerentes fora do roster, incluindo Gustavo Theodor, Jefferson Franco e Marcelo.
+- Ferias agora criam buffers automaticos de indisponibilidade em sabados/domingos nos 2 dias antes/depois do periodo de ferias.
+- O algoritmo passou a considerar uma janela recente de rotacao alem da carga proporcional, evitando repeticoes curtas sem perder o equilibrio anual.
+- Validacao local: OpenSpec strict OK, `python manage.py check` OK e `python manage.py test` com 31 testes OK.
+
 ## 2026-07-09 - Documento consolidado de regras
 
 - Criado `docs/REGRAS_ESCALA_GERENCIAL.md` com as regras implementadas de escala, feriados, feriadoes, ferias, bloqueios, redistribuicao, usuarios, relatorios, exportacoes, auditoria, OpenSpec e limites de dominio.

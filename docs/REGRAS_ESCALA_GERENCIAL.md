@@ -149,11 +149,28 @@ Regra principal:
 - Bloqueios reduzem as oportunidades disponiveis do gerente.
 - O gerente nao ganha "divida" de escala por ter ficado de ferias ou bloqueado.
 
-## 9. Redistribuicao apos ferias ou bloqueios
+## 9. Buffer de fim de semana nas ferias
+
+Quando um gerente tem ferias cadastradas, o sistema cria bloqueios automaticos para fins de semana imediatamente adjacentes:
+
+- nos 2 dias corridos antes do inicio das ferias, se algum desses dias for sabado ou domingo;
+- nos 2 dias corridos depois do fim das ferias, se algum desses dias for sabado ou domingo.
+
+Esses dias de buffer:
+
+- aparecem como indisponibilidade automatica;
+- impedem o gerente de ser escalado;
+- reduzem as oportunidades disponiveis;
+- nao geram compensacao futura.
+
+Exemplo: se uma feria comeca em uma segunda-feira, o sabado e domingo imediatamente anteriores sao bloqueados automaticamente. Se termina em uma sexta-feira, o sabado e domingo imediatamente posteriores tambem sao bloqueados automaticamente.
+
+## 10. Redistribuicao apos ferias ou bloqueios
 
 Ao adicionar, editar ou remover bloqueio/ferias que afete periodo futuro:
 
 - o sistema regenera a escala a partir da data afetada;
+- quando o bloqueio for ferias, a data afetada considera tambem o primeiro buffer automatico de fim de semana;
 - no primeiro mes impactado, dias anteriores a data de inicio sao preservados;
 - meses fechados sao pulados;
 - a redistribuicao considera o mes atual afetado e os 5 meses seguintes;
@@ -166,7 +183,7 @@ Exemplo:
 - Dias automaticos de 01/07 a 14/07 permanecem como estavam.
 - Se agosto ou setembro estiverem fechados, eles sao pulados.
 
-## 10. Distribuicao proporcional
+## 11. Distribuicao proporcional
 
 A distribuicao tenta ser equilibrada proporcionalmente aos dias disponiveis de cada gerente.
 
@@ -186,7 +203,7 @@ Regra mais importante:
 - O gerente que saiu de ferias nao deve ser sobrecarregado depois para "empatar" com os demais em quantidade bruta.
 - O que deve ficar equilibrado e a carga proporcional em relacao aos dias em que cada pessoa podia trabalhar.
 
-## 11. Escolha automatica do gerente
+## 12. Escolha automatica do gerente
 
 Para cada data de cobertura, o sistema:
 
@@ -209,10 +226,11 @@ A pontuacao penaliza:
 
 - escala no dia anterior ou seguinte;
 - escalas muito proximas;
+- presenca em uma janela recente de rotacao;
 - excesso relativo de plantoes;
 - excesso em fins de semana, feriados ou feriadoes.
 
-## 12. Proibicao de dias consecutivos
+## 13. Proibicao de dias consecutivos
 
 A mesma pessoa nao pode ficar escalada em dois dias seguidos.
 
@@ -231,7 +249,7 @@ O sistema verifica:
 
 Se a regra for violada, a operacao deve ser bloqueada ou retornar erro.
 
-## 13. Meses fechados
+## 14. Meses fechados
 
 Um mes fechado fica protegido contra alteracoes automaticas.
 
@@ -244,7 +262,7 @@ Regras:
 - Ao reabrir um mes, o bloqueio do mes e removido e dias com status `FECHADA` voltam para `AUTOMATICA`.
 - Fechar e reabrir mes e operacao restrita a administrador/staff.
 
-## 14. Historico de janeiro a junho de 2026
+## 15. Historico de janeiro a junho de 2026
 
 O historico de `2026-01-01` ate `2026-06-30` vem da planilha atual.
 
@@ -256,7 +274,7 @@ Regras:
 - Os contadores historicos importados entram na distribuicao futura.
 - Jan/2026 a Jun/2026 ficam fechados/travados apos importacao.
 
-## 15. Edicao manual de escala
+## 16. Edicao manual de escala
 
 Ao editar manualmente um dia:
 
@@ -266,7 +284,7 @@ Ao editar manualmente um dia:
 - o historico de alteracao e gravado;
 - a escala manual e preservada por padrao em novas geracoes.
 
-## 16. Troca de sobreaviso
+## 17. Troca de sobreaviso
 
 A tela de troca substitui o gerente de sobreaviso de uma data.
 
@@ -280,7 +298,7 @@ Regras:
 - Os contadores dos usuarios sao recalculados.
 - A troca e gravada no historico.
 
-## 17. Limpeza de dia
+## 18. Limpeza de dia
 
 Quando uma escala de dia e limpa/removida:
 
@@ -288,7 +306,7 @@ Quando uma escala de dia e limpa/removida:
 - os contadores devem ser atualizados conforme a ausencia daquele sobreaviso;
 - a data deixa de exibir gerente ate nova edicao ou regeracao aplicavel.
 
-## 18. Contadores dos gerentes
+## 19. Contadores dos gerentes
 
 Os contadores sao recalculados considerando a regra nova.
 
@@ -301,7 +319,7 @@ Regras:
 - Feriados e feriadoes sao contados separadamente.
 - Ultima escala considera a ultima data em que o gerente aparece em `s1`.
 
-## 19. Alertas de desequilibrio
+## 20. Alertas de desequilibrio
 
 O sistema pode gerar alertas quando:
 
@@ -315,7 +333,7 @@ A regra de desequilibrio considera:
 
 O alerta deixa claro que ferias reduzem dias disponiveis e nao geram divida futura.
 
-## 20. Relatorios
+## 21. Relatorios
 
 Os relatorios mostram a escala por periodo mensal ou anual.
 
@@ -341,7 +359,7 @@ Regras dos relatorios:
 - O relatorio anual de 2026 inclui o historico importado quando aplicavel.
 - A leitura deve explicar a proporcionalidade, nao apenas o total bruto.
 
-## 21. Dashboard
+## 22. Dashboard
 
 O dashboard deve mostrar:
 
@@ -362,7 +380,7 @@ Mini calendario:
 - ao passar o mouse, deve aparecer o nome do gerente do dia;
 - a lista/tabela de proximas escalas fica abaixo ou ao lado, conforme layout responsivo.
 
-## 22. Calendario mensal e visao anual
+## 23. Calendario mensal e visao anual
 
 Regras visuais:
 
@@ -374,7 +392,7 @@ Regras visuais:
 - Feriado e feriadao devem aparecer com etiqueta explicita quando aplicavel.
 - Ferias/bloqueios nao devem aparecer como linhas de escala dentro da celula do calendario como se fossem gerente escalado.
 
-## 23. Exportacoes CSV
+## 24. Exportacoes CSV
 
 Exportacao mensal da escala:
 
@@ -389,7 +407,7 @@ Exportacao de resumo:
 - mensal ou anual;
 - colunas: Usuario, Grupo, Total Sobreaviso, Dias Disponiveis, Percentual Carga, Sabados, Domingos, Feriados, Feriadoes, Ferias (dias), Bloqueios (dias).
 
-## 24. Usuarios e acesso
+## 25. Usuarios e acesso
 
 Todas as telas operacionais principais exigem login.
 
@@ -424,23 +442,25 @@ Usuarios padrao:
 - sao ativados no Django;
 - seguem username gerado pelo nome do gerente em minusculo, sem acentos e com separador ponto.
 
-## 25. Comandos operacionais
+## 26. Comandos operacionais
 
 ### `python manage.py importar_planilha_atual`
 
-Importa a base atual da escala gerencial.
+Importa a base CIDIS 2026 atual da escala gerencial.
 
 Regras do comando:
 
 - cria/atualiza feriados;
-- substitui usuarios genericos `Copel 1` a `Copel 9` pelos gerentes reais;
+- mantem ativos apenas os 9 gerentes atuais;
+- desativa gerentes fora do roster atual, incluindo Gustavo Theodor, Jefferson Franco e Marcelo;
 - grava lotacao, telefone, grupo e contadores historicos;
 - sincroniza usuarios padrao dos gerentes;
 - recria bloqueios da planilha;
-- importa a escala historica;
+- cria buffers automaticos de fim de semana antes/depois das ferias;
+- importa a escala historica ate 09/07/2026;
 - trava Jan/2026 a Jun/2026;
-- limpa escala futura nao manual;
-- gera escala de Jul/2026 a Dez/2027;
+- limpa toda escala futura a partir de 10/07/2026;
+- gera escala de 10/07/2026 a Dez/2026;
 - atualiza contadores.
 
 ### `python manage.py sincronizar_usuarios_padrao`
@@ -463,7 +483,7 @@ Regra atual:
 
 - comando legado delega para `importar_planilha_atual`.
 
-## 26. Auditoria e historico
+## 27. Auditoria e historico
 
 O sistema registra eventos importantes em historico ou alertas.
 
@@ -478,7 +498,7 @@ Eventos registrados incluem:
 - tentativa de regerar mes fechado;
 - meses fechados pulados em redistribuicao.
 
-## 27. Validacoes automatizadas existentes
+## 28. Validacoes automatizadas existentes
 
 A suite de testes protege regras como:
 
@@ -504,7 +524,7 @@ Comandos de validacao usados:
 - `python manage.py check`;
 - `python manage.py test`.
 
-## 28. OpenSpec como fonte de contrato
+## 29. OpenSpec como fonte de contrato
 
 O projeto agora usa OpenSpec para controlar mudancas de comportamento.
 
@@ -522,7 +542,7 @@ Regra de processo:
 - A change deve passar por proposta, design/specs/tasks quando aplicavel.
 - Apos implementacao e validacao, a change deve ser arquivada.
 
-## 29. Regras negativas importantes
+## 30. Regras negativas importantes
 
 O sistema nao deve:
 
@@ -530,6 +550,7 @@ O sistema nao deve:
 - usar S1/S2 como regra operacional futura;
 - compensar ferias sobrecarregando o gerente depois;
 - escalar gerente bloqueado;
+- escalar gerente em fim de semana de buffer automatico de ferias;
 - escalar a mesma pessoa em dois dias consecutivos;
 - alterar automaticamente mes fechado;
 - alterar historico Jan-Jun/2026 pela regra nova;

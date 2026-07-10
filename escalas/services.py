@@ -19,6 +19,7 @@ from .models import (
 HISTORICO_INICIO = date(2026, 1, 1)
 HISTORICO_FIM = date(2026, 6, 30)
 DATA_CORTE_HISTORICO = date(2026, 7, 1)
+MOTIVO_BUFFER_FERIAS = 'Buffer automatico de ferias adjacente'
 
 
 # ─── Holiday Data ───────────────────────────────────────────────────────────
@@ -394,6 +395,79 @@ def _usuario_disponivel(usuario, d):
     ).exists()
 
 
+def _compactar_datas(datas):
+    """Return contiguous date ranges from an iterable of dates."""
+    ranges = []
+    current = []
+    for d in sorted(set(datas)):
+        if not current or (d - current[-1]).days == 1:
+            current.append(d)
+        else:
+            ranges.append((current[0], current[-1]))
+            current = [d]
+    if current:
+        ranges.append((current[0], current[-1]))
+    return ranges
+
+
+def get_datas_buffer_ferias(ferias):
+    """
+    Return weekend buffer dates around one vacation block.
+
+    Only Saturday/Sunday dates within two calendar days before the vacation
+    starts or after it ends are considered.
+    """
+    datas = set()
+    for offset in (2, 1):
+        d = ferias.data_inicio - timedelta(days=offset)
+        if is_fim_de_semana(d):
+            datas.add(d)
+    for offset in (1, 2):
+        d = ferias.data_fim + timedelta(days=offset)
+        if is_fim_de_semana(d):
+            datas.add(d)
+    return sorted(datas)
+
+
+def sincronizar_buffers_ferias_usuario(usuario):
+    """
+    Recreate automatic weekend buffers for all vacation blocks of one manager.
+
+    Buffers use ordinary unavailability blocks so the scheduler, reports and
+    validations can keep using the same availability rules.
+    """
+    BloqueioUsuario.objects.filter(
+        usuario=usuario,
+        motivo__startswith=MOTIVO_BUFFER_FERIAS,
+    ).delete()
+
+    ferias_qs = list(BloqueioUsuario.objects.filter(usuario=usuario, tipo='FERIAS'))
+    ferias_datas = set()
+    for ferias in ferias_qs:
+        cursor = ferias.data_inicio
+        while cursor <= ferias.data_fim:
+            ferias_datas.add(cursor)
+            cursor += timedelta(days=1)
+
+    buffer_datas = set()
+    for ferias in ferias_qs:
+        for d in get_datas_buffer_ferias(ferias):
+            if d not in ferias_datas:
+                buffer_datas.add(d)
+
+    criados = []
+    for inicio, fim in _compactar_datas(buffer_datas):
+        blk = BloqueioUsuario.objects.create(
+            usuario=usuario,
+            tipo='INDISPONIBILIDADE',
+            data_inicio=inicio,
+            data_fim=fim,
+            motivo=f'{MOTIVO_BUFFER_FERIAS}: fim de semana antes/depois das ferias',
+        )
+        criados.append(blk)
+    return criados
+
+
 def _gerente_do_dia(d):
     """Return the scheduled on-call manager for a date, if any."""
     escala = EscalaDia.objects.filter(data=d).select_related('s1').first()
@@ -460,6 +534,7 @@ def build_stats_cache():
             'plantoes': u.pl_inicial,
             'oportunidades': u.oportunidades_iniciais,
             'ultima': None,
+            'datas': [],
             'fins_de_semana': 0,
             'feriados_count': 0,
             'feriadoes_count': 0,
@@ -484,6 +559,7 @@ def build_stats_cache():
             continue
         stats['plantoes'] += 1
         stats['ultima'] = ed.data
+        stats.setdefault('datas', []).append(ed.data)
         if ed.fim_de_semana:
             stats['fins_de_semana'] += 1
         if ed.feriado:
@@ -502,6 +578,7 @@ def _registrar_oportunidades_do_dia(d, stats_cache):
                 'plantoes': 0,
                 'oportunidades': 0,
                 'ultima': None,
+                'datas': [],
                 'fins_de_semana': 0,
                 'feriados_count': 0,
                 'feriadoes_count': 0,
@@ -515,12 +592,14 @@ def _registrar_atribuicao(usuario, d, tipo_bloco, stats_cache):
         'plantoes': 0,
         'oportunidades': 0,
         'ultima': None,
+        'datas': [],
         'fins_de_semana': 0,
         'feriados_count': 0,
         'feriadoes_count': 0,
     })
     stats['plantoes'] += 1
     stats['ultima'] = d
+    stats.setdefault('datas', []).append(d)
     if tipo_bloco == 'FIM_DE_SEMANA':
         stats['fins_de_semana'] += 1
     elif tipo_bloco == 'FERIADO':
@@ -541,6 +620,7 @@ def calcular_score_usuario(usuario, data_ref, tipo_bloco, stats_cache):
         'plantoes': 0,
         'oportunidades': 0,
         'ultima': None,
+        'datas': [],
         'fins_de_semana': 0,
         'feriados_count': 0,
         'feriadoes_count': 0,
@@ -551,6 +631,18 @@ def calcular_score_usuario(usuario, data_ref, tipo_bloco, stats_cache):
 
     score = carga_relativa * 10000
     score += stats.get('plantoes', 0) * 35
+
+    recentes = []
+    for user_id, user_stats in stats_cache.items():
+        for d in user_stats.get('datas', []):
+            if d < data_ref:
+                recentes.append((d, user_id))
+    recentes.sort(key=lambda item: item[0])
+    janela = min(4, max(0, UsuarioEscala.objects.filter(ativo=True).count() - 1))
+    recentes_ids = [user_id for _d, user_id in recentes[-janela:]]
+    if usuario.id in recentes_ids:
+        posicao = list(reversed(recentes_ids)).index(usuario.id)
+        score += max(400, 3000 - (posicao * 300))
 
     if tipo_bloco == 'FIM_DE_SEMANA':
         score += stats.get('fins_de_semana', 0) * 40
@@ -565,11 +657,13 @@ def calcular_score_usuario(usuario, data_ref, tipo_bloco, stats_cache):
         if gap_dias <= 1:
             score += 100000
         elif gap_dias <= 3:
-            score += 600
+            score += 4000
         elif gap_dias <= 7:
-            score += 250
+            score += 2000
         elif gap_dias <= 14:
-            score += 80
+            score += 800
+        elif gap_dias <= 21:
+            score += 300
     else:
         score -= 100
 
@@ -602,10 +696,11 @@ def encontrar_melhor_par(bloco, stats_cache):
     """
     assignments = {}
     temp_assignments = {}
-    local_stats = {
-        user_id: stats.copy()
-        for user_id, stats in stats_cache.items()
-    }
+    local_stats = {}
+    for user_id, stats in stats_cache.items():
+        copied = stats.copy()
+        copied['datas'] = list(stats.get('datas', []))
+        local_stats[user_id] = copied
 
     for d in sorted(bloco['days']):
         _registrar_oportunidades_do_dia(d, local_stats)
